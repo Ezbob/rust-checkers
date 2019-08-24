@@ -3,15 +3,21 @@ extern crate sdl2;
 use crate::gameclock::GameClock;
 use std::rc::Rc;
 use sdl2::Sdl;
-
-
+use sdl2::render::Canvas;
+use sdl2::video::Window;
+use sdl2::event::Event;
 
 pub trait GameStateTrait {
-    fn update(&mut self);
-    fn render(&self);
-    fn handle_event(&mut self, event: &sdl2::event::Event);
+    fn update(&mut self) -> Signal;
+    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String>;
+    fn handle_event(&mut self, event: &Event) -> Signal;
     fn load(&mut self) -> Result<(), String>;
     fn is_loaded(&self) -> bool;
+}
+
+pub enum Signal {
+    Quit,
+    Continue
 }
 
 pub struct GameMachine<'a> {
@@ -22,19 +28,17 @@ pub struct GameMachine<'a> {
 }
 
 impl<'a> GameMachine<'a> {
-    pub fn new(sdl_ctx: &'a Sdl, states: Vec<Rc<dyn GameStateTrait>>) -> GameMachine<'a> {
+    pub fn new(sdl_ctx: &'a Sdl) -> GameMachine<'a> {
         GameMachine {
-            should_run: false,
+            should_run: true,
             current_index: 0,
-            states,
-            sdl: sdl_ctx,
-
+            states: vec![],
+            sdl: sdl_ctx
         }
     }
 
-    pub fn goto_state(&mut self, i: usize) {
-        self.current_index = i;
-        self.should_run = false;
+    pub fn add_state(&mut self, state: Rc<dyn GameStateTrait>) {
+        self.states.push(state);
     }
 
     fn get_curr_mut_state(&mut self) -> &mut dyn GameStateTrait {
@@ -47,8 +51,9 @@ impl<'a> GameMachine<'a> {
         state_rc.as_ref()
     }
 
-    pub fn run(&mut self, clock: &mut GameClock) -> Result<(), String> {
+    pub fn run(&mut self, clock: &mut GameClock, canvas: &mut Canvas<Window>) -> Result<(), String> {
         let mut pump = self.sdl.event_pump().unwrap();
+
         'running: loop {
             {
                 let state = self.get_curr_mut_state();
@@ -69,16 +74,22 @@ impl<'a> GameMachine<'a> {
                 let state = self.get_curr_mut_state();
 
                 for event in pump.poll_iter() {
-                    state.handle_event(&event);
+                    match state.handle_event(&event) {
+                        Signal::Quit => break 'running,
+                        Signal::Continue => {}
+                    }
                 }
 
                 while clock.should_update() {
-                    state.update();
+                    match state.update() {
+                        Signal::Quit => break 'running,
+                        Signal::Continue => {}
+                    }
 
                     clock.lag_update();
                 }
 
-                state.render();
+                state.render(canvas)?;
 
                 clock.tick();
             }
