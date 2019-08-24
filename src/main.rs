@@ -1,11 +1,12 @@
 extern crate sdl2;
 
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseButton;
-use sdl2::Sdl;
-
 mod gamestate;
+mod gameclock;
+
+use sdl2::Sdl;
+use gamestate::GameStateTrait;
+use std::rc::Rc;
+
 
 fn main() -> Result<(), String> {
     let sdl_cxt: Sdl = sdl2::init()?;
@@ -15,29 +16,13 @@ fn main() -> Result<(), String> {
         .position_centered()
         .build().unwrap();
 
-    //let mut events = sdl_cxt.event_pump()?;
+    let states: Vec<Rc<dyn GameStateTrait>> = vec![];
 
-    let _gamemachine = gamestate::GameMachine::new(&sdl_cxt, vec![]);
-/*
-    'running: loop {
-        for event in events.poll_iter() {
-            match event {
-                Event::KeyDown {keycode: Some(Keycode::Escape), ..} |
-                Event::Quit { .. } => break 'running,
-                Event::MouseButtonDown {x, y, mouse_btn, ..} => {
-                    match mouse_btn {
-                        MouseButton::Left => {
-                            println!("Clicked left: ({}, {})", x, y);
-                        },
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        }
+    let mut clock = gameclock::GameClock::new(sdl_cxt.timer().unwrap(), 16.0);
 
-    }
-*/
+    let mut machine = gamestate::GameMachine::new(&sdl_cxt, states);
+
+    machine.run(&mut clock)?;
 
     Ok(())
 }

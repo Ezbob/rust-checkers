@@ -1,7 +1,10 @@
 extern crate sdl2;
 
+use crate::gameclock::GameClock;
 use std::rc::Rc;
 use sdl2::Sdl;
+
+
 
 pub trait GameStateTrait {
     fn update(&mut self);
@@ -19,12 +22,13 @@ pub struct GameMachine<'a> {
 }
 
 impl<'a> GameMachine<'a> {
-    pub fn new(sdl_ctx: & Sdl, states: Vec<Rc<dyn GameStateTrait>>) -> GameMachine {
+    pub fn new(sdl_ctx: &'a Sdl, states: Vec<Rc<dyn GameStateTrait>>) -> GameMachine<'a> {
         GameMachine {
             should_run: false,
             current_index: 0,
             states,
-            sdl: sdl_ctx
+            sdl: sdl_ctx,
+
         }
     }
 
@@ -43,13 +47,9 @@ impl<'a> GameMachine<'a> {
         state_rc.as_ref()
     }
 
-    pub fn run(&mut self) -> Result<(), String> {
+    pub fn run(&mut self, clock: &mut GameClock) -> Result<(), String> {
         let mut pump = self.sdl.event_pump().unwrap();
         'running: loop {
-            if !self.should_run {
-                break 'running;
-            }
-
             {
                 let state = self.get_curr_mut_state();
 
@@ -61,12 +61,26 @@ impl<'a> GameMachine<'a> {
                 }
             }
 
-            'stateloop: loop {
+            loop {
+                if !self.should_run {
+                    break 'running;
+                }
+
                 let state = self.get_curr_mut_state();
 
                 for event in pump.poll_iter() {
                     state.handle_event(&event);
                 }
+
+                while clock.should_update() {
+                    state.update();
+
+                    clock.lag_update();
+                }
+
+                state.render();
+
+                clock.tick();
             }
         }
 
