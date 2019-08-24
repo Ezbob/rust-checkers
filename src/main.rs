@@ -15,8 +15,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
 struct InitialState {
-    is_loaded: bool,
-
+    is_loaded: bool
 }
 
 impl InitialState {
@@ -44,17 +43,19 @@ impl GameStateTrait for InitialState {
 
     fn handle_event(&mut self, event: &Event) -> gamestate::Signal {
         match event {
-            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
+            Event::Quit {..}
+            | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
             _ => Signal::Continue
         }
     }
 
     fn load(&mut self) -> Result<(), String> {
+        self.is_loaded = true;
         Ok(())
     }
 
     fn is_loaded(&self) -> bool {
-        true
+        self.is_loaded
     }
 }
 
