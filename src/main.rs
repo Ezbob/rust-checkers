@@ -37,7 +37,7 @@ impl GameStateTrait for InitialState {
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
         canvas.clear();
-        canvas.set_draw_color(Color::RGB(self.redish, 0x0, 0x0));
+        canvas.set_draw_color(Color::RGB(self.redish, 0x13, 0x0));
         canvas.draw_rect(canvas.viewport())?;
 
         canvas.present();
