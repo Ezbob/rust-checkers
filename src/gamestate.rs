@@ -17,6 +17,7 @@ pub trait GameStateTrait {
 
 pub enum Signal {
     Quit,
+    GotoState(usize),
     Continue
 }
 
@@ -46,17 +47,13 @@ impl<'a> GameMachine<'a> {
         Rc::get_mut(state_rc).unwrap()
     }
 
-    fn get_curr_state(&self) -> &dyn GameStateTrait {
-        let state_rc : &Rc<dyn GameStateTrait> = self.states.get(self.current_index).unwrap();
-        state_rc.as_ref()
-    }
-
     pub fn run(&mut self, clock: &mut GameClock, canvas: &mut Canvas<Window>) -> Result<(), String> {
         let mut pump = self.sdl.event_pump().unwrap();
 
-        'running: loop {
+        'running: while !self.states.is_empty() {
+
             {
-                let state = self.get_curr_mut_state();
+                let state: &mut dyn GameStateTrait = self.get_curr_mut_state();
 
                 if !state.is_loaded() {
                     match state.load() {
@@ -66,7 +63,7 @@ impl<'a> GameMachine<'a> {
                 }
             }
 
-            loop {
+            'gameloop: loop {
                 if !self.should_run {
                     break 'running;
                 }
@@ -76,14 +73,18 @@ impl<'a> GameMachine<'a> {
                 for event in pump.poll_iter() {
                     match state.handle_event(&event) {
                         Signal::Quit => break 'running,
-                        Signal::Continue => {}
+                        _ => {}
                     }
                 }
 
                 while clock.should_update() {
                     match state.update() {
                         Signal::Quit => break 'running,
-                        Signal::Continue => {}
+                        Signal::GotoState(state) => {
+                            self.current_index = state;
+                            break 'gameloop;
+                        }
+                        _ => {}
                     }
 
                     clock.lag_update();
@@ -93,6 +94,8 @@ impl<'a> GameMachine<'a> {
 
                 clock.tick();
             }
+
+            self.states.pop();
         }
 
         Ok(())

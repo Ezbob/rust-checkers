@@ -15,13 +15,15 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
 struct InitialState {
-    is_loaded: bool
+    is_loaded: bool,
+    redish: u8
 }
 
 impl InitialState {
     pub fn new() -> InitialState {
         InitialState {
-            is_loaded: false
+            is_loaded: false,
+            redish: 0
         }
     }
 }
@@ -29,12 +31,13 @@ impl InitialState {
 impl GameStateTrait for InitialState {
 
     fn update(&mut self) -> Signal {
+        self.redish = (self.redish + 2) % 0xfe;
         Signal::Continue
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
         canvas.clear();
-        canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
+        canvas.set_draw_color(Color::RGB(self.redish, 0x0, 0x0));
         canvas.draw_rect(canvas.viewport())?;
 
         canvas.present();
@@ -68,7 +71,11 @@ fn main() -> Result<(), String> {
         .position_centered()
         .build().unwrap();
 
-    let mut canvas = win.into_canvas().build().unwrap();
+    let mut canvas = win
+        .into_canvas()
+        .present_vsync()
+        .accelerated()
+        .build().unwrap();
     let mut clock = gameclock::GameClock::new(sdl_cxt.timer().unwrap(), 16.0);
     let mut machine = gamestate::GameMachine::new(&sdl_cxt);
 
