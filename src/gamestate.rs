@@ -81,8 +81,10 @@ impl<'a> GameMachine<'a> {
                     match state.update() {
                         Signal::Quit => break 'running,
                         Signal::GotoState(state) => {
-                            self.current_index = state;
-                            break 'gameloop;
+                            if state < self.states.len() {
+                                self.current_index = state;
+                                break 'gameloop;
+                            }
                         }
                         _ => {}
                     }
@@ -94,8 +96,6 @@ impl<'a> GameMachine<'a> {
 
                 clock.tick();
             }
-
-            self.states.pop();
         }
 
         Ok(())
