@@ -73,6 +73,10 @@ impl<'a> GameMachine<'a> {
                 for event in pump.poll_iter() {
                     match state.handle_event(&event) {
                         Signal::Quit => break 'running,
+                        Signal::GotoState(state_index) => {
+                            self.current_index = state_index;
+                            break 'gameloop;
+                        },
                         _ => {}
                     }
                 }

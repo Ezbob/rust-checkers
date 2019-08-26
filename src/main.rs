@@ -48,6 +48,7 @@ impl GameStateTrait for InitialState {
         match event {
             Event::Quit {..}
             | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
+            Event::KeyDown {keycode: Some(Keycode::A), ..} => Signal::GotoState(1),
             _ => Signal::Continue
         }
     }
@@ -62,6 +63,44 @@ impl GameStateTrait for InitialState {
     }
 }
 
+struct WhiteState;
+
+impl WhiteState {
+    pub fn new() -> WhiteState {
+        WhiteState {}
+    }
+}
+
+impl GameStateTrait for WhiteState {
+    fn update(&mut self) -> Signal {
+        Signal::Continue
+    }
+
+    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
+        canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
+        canvas.clear();
+        canvas.fill_rect(canvas.viewport());
+        canvas.present();
+        Ok(())
+    }
+
+    fn handle_event(&mut self, event: &Event) -> Signal {
+        match event {
+            Event::Quit {..}
+            | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
+            Event::KeyDown {keycode: Some(Keycode::B), ..} => Signal::GotoState(0),
+            _ => Signal::Continue
+        }
+    }
+
+    fn load(&mut self) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn is_loaded(&self) -> bool {
+        true
+    }
+}
 
 fn main() -> Result<(), String> {
     let sdl_cxt: Sdl = sdl2::init()?;
@@ -80,6 +119,7 @@ fn main() -> Result<(), String> {
     let mut machine = gamestate::GameMachine::new(&sdl_cxt);
 
     machine.add_state(Rc::new(InitialState::new()));
+    machine.add_state(Rc::new(WhiteState::new()));
 
     machine.run(&mut clock, &mut canvas)?;
 
