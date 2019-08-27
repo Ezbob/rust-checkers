@@ -2,6 +2,7 @@ extern crate sdl2;
 
 mod gamestate;
 mod gameclock;
+mod boardstate;
 
 use gamestate::GameStateTrait;
 use gamestate::Signal;
@@ -14,99 +15,11 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
-struct InitialState {
-    is_loaded: bool,
-    redish: u8
-}
-
-impl InitialState {
-    pub fn new() -> InitialState {
-        InitialState {
-            is_loaded: false,
-            redish: 0
-        }
-    }
-}
-
-impl GameStateTrait for InitialState {
-
-    fn update(&mut self) -> Signal {
-        self.redish = (self.redish + 2) % 0xfe;
-        Signal::Continue
-    }
-
-    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
-        canvas.clear();
-        canvas.set_draw_color(Color::RGB(self.redish, 0x13, 0x0));
-        canvas.draw_rect(canvas.viewport())?;
-
-        canvas.present();
-        Ok(())
-    }
-
-    fn handle_event(&mut self, event: &Event) -> gamestate::Signal {
-        match event {
-            Event::Quit {..}
-            | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
-            Event::KeyDown {keycode: Some(Keycode::A), ..} => Signal::GotoState(1),
-            _ => Signal::Continue
-        }
-    }
-
-    fn load(&mut self) -> Result<(), String> {
-        self.is_loaded = true;
-        Ok(())
-    }
-
-    fn is_loaded(&self) -> bool {
-        self.is_loaded
-    }
-}
-
-struct WhiteState;
-
-impl WhiteState {
-    pub fn new() -> WhiteState {
-        WhiteState {}
-    }
-}
-
-impl GameStateTrait for WhiteState {
-    fn update(&mut self) -> Signal {
-        Signal::Continue
-    }
-
-    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
-        canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
-        canvas.clear();
-        canvas.fill_rect(canvas.viewport());
-        canvas.present();
-        Ok(())
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Signal {
-        match event {
-            Event::Quit {..}
-            | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
-            Event::KeyDown {keycode: Some(Keycode::B), ..} => Signal::GotoState(0),
-            _ => Signal::Continue
-        }
-    }
-
-    fn load(&mut self) -> Result<(), String> {
-        Ok(())
-    }
-
-    fn is_loaded(&self) -> bool {
-        true
-    }
-}
-
 fn main() -> Result<(), String> {
     let sdl_cxt: Sdl = sdl2::init()?;
     let video_sys = sdl_cxt.video()?;
 
-    let win = video_sys.window("Rust sdl2 demo", 800, 600)
+    let win = video_sys.window("Rust sdl2 checkers", 840, 860)
         .position_centered()
         .build().unwrap();
 
@@ -118,8 +31,7 @@ fn main() -> Result<(), String> {
     let mut clock = gameclock::GameClock::new(sdl_cxt.timer().unwrap(), 16.0);
     let mut machine = gamestate::GameMachine::new(&sdl_cxt);
 
-    machine.add_state(Rc::new(InitialState::new()));
-    machine.add_state(Rc::new(WhiteState::new()));
+    machine.add_state(Rc::new(boardstate::BoardState::new()));
 
     machine.run(&mut clock, &mut canvas)?;
 
