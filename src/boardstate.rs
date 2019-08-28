@@ -78,15 +78,14 @@ impl GameStateTrait for BoardState {
                 container.set_x((100 * (flat_index % BOARD_LENGTH) + 20) as i32);
                 container.set_y((100 * (flat_index / BOARD_LENGTH) + 20) as i32);
 
-                if (x % 2 == 1 && y % 2 == 0) || (x % 2 == 0 && y % 2 == 1) {
+                if x % 2 != y % 2 {
                     let black_tile = &mut self.black_tiles[tile_index];
                     black_tile.set_x(container.x());
                     black_tile.set_y(container.y());
                     tile_index += 1;
                 }
 
-                if (y % 2 == 0 && y < (BOARD_LENGTH / 2) && x % 2 == 0) ||
-                    (y % 2 != 0 && y < (BOARD_LENGTH / 2 - 1) && x % 2 != 0) {
+                if y % 2 == x % 2 && y < (BOARD_LENGTH / 2 - 1) {
                     // green stuff
                     let checker_rect = &mut self.checker_rectangles[self.green_length];
                     checker_rect.set_x((100 * (x % BOARD_LENGTH) + 40) as i32);
@@ -94,8 +93,7 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_width(60);
                     checker_rect.set_height(60);
                     self.green_length += 1;
-                } else if (y % 2 == 0 && y > (BOARD_LENGTH / 2) && x % 2 == 0) ||
-                    (y % 2 != 0 && y > (BOARD_LENGTH / 2) && x % 2 != 0) {
+                } else if y % 2 == x % 2 && y > (BOARD_LENGTH / 2) {
                     // red stuff
                     let current_index = self.green_length + self.red_length;
                     let checker_rect = &mut self.checker_rectangles[current_index];
