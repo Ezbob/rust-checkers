@@ -70,13 +70,15 @@ impl GameStateTrait for BoardState {
 
     fn load(&mut self) -> Result<(), String> {
         let mut tile_index = 0;
+        const CONTAINER_WIDTH: usize = 100;
+        const CHECKER_PADDING: usize = 20;
+        const OUTER_PADDING: usize = 20; // padding from the left most top corner
         for y in 0..BOARD_LENGTH {
             for x in 0..BOARD_LENGTH {
-                let flat_index = y * BOARD_LENGTH + x;
-                let container = &mut self.board_tiles[flat_index];
+                let container = &mut self.board_tiles[y * BOARD_LENGTH + x];
 
-                container.set_x((100 * (flat_index % BOARD_LENGTH) + 20) as i32);
-                container.set_y((100 * (flat_index / BOARD_LENGTH) + 20) as i32);
+                container.set_x((CONTAINER_WIDTH * x + OUTER_PADDING) as i32);
+                container.set_y((CONTAINER_WIDTH * y + OUTER_PADDING) as i32);
 
                 if x % 2 != y % 2 {
                     let black_tile = &mut self.black_tiles[tile_index];
@@ -88,19 +90,18 @@ impl GameStateTrait for BoardState {
                 if y % 2 == x % 2 && y < (BOARD_LENGTH / 2 - 1) {
                     // green stuff
                     let checker_rect = &mut self.checker_rectangles[self.green_length];
-                    checker_rect.set_x((100 * (x % BOARD_LENGTH) + 40) as i32);
-                    checker_rect.set_y((container.y() + 20) as i32);
-                    checker_rect.set_width(60);
-                    checker_rect.set_height(60);
+                    checker_rect.set_x((container.x() + CHECKER_PADDING as i32) as i32);
+                    checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
+                    checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
+                    checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     self.green_length += 1;
                 } else if y % 2 == x % 2 && y > (BOARD_LENGTH / 2) {
                     // red stuff
-                    let current_index = self.green_length + self.red_length;
-                    let checker_rect = &mut self.checker_rectangles[current_index];
-                    checker_rect.set_x((100 * (x % BOARD_LENGTH) + 40) as i32);
-                    checker_rect.set_y((container.y() + 20) as i32);
-                    checker_rect.set_width(60);
-                    checker_rect.set_height(60);
+                    let checker_rect = &mut self.checker_rectangles[self.green_length + self.red_length];
+                    checker_rect.set_x((container.x() + CHECKER_PADDING as i32) as i32);
+                    checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
+                    checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
+                    checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     self.red_length += 1;
                 }
             }
