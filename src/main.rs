@@ -3,6 +3,7 @@ extern crate sdl2;
 mod gamestate;
 mod gameclock;
 mod boardstate;
+mod winstate;
 
 use gamestate::GameStateTrait;
 use gamestate::Signal;
@@ -32,6 +33,7 @@ fn main() -> Result<(), String> {
     let mut machine = gamestate::GameMachine::new(&sdl_cxt);
 
     machine.add_state(Rc::new(boardstate::BoardState::new()));
+    machine.add_state(Rc::new(winstate::WinState::new()));
 
     machine.run(&mut clock, &mut canvas)?;
 

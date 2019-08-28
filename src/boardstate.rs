@@ -8,17 +8,49 @@ use sdl2::render;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
+use sdl2::rect::{Point, Rect};
+use sdl2::render::Canvas;
+use sdl2::video::Window;
+use sdl2::mouse::MouseButton;
+use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
+
+struct Score {
+    green: usize,
+    red: usize
+}
+
+#[derive(Copy, Clone)]
+struct BoardCell {
+    occupant_index: Option<usize>,
+    x: usize,
+    y: usize
+}
+
+impl BoardCell {
+    fn new() -> BoardCell {
+        BoardCell {
+            occupant_index: None,
+            x: 0,
+            y: 0
+        }
+    }
+}
 
 pub struct BoardState {
     is_loaded: bool,
     board_tiles: [rect::Rect; BOARD_SIZE],
     black_tiles: [rect::Rect; BOARD_SIZE / 2],
     checker_rectangles: [rect::Rect; BOARD_SIZE],
+    cell_mapping: [BoardCell; BOARD_SIZE],
     green_length: usize,
-    red_length: usize
+    red_length: usize,
+    score: Score,
+    mouse_point: Point,
+    selected_index: Option<usize>,
+    target_index: Option<usize>
 }
 
 impl BoardState {
@@ -29,17 +61,54 @@ impl BoardState {
             black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
             checker_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
             green_length: 0,
-            red_length: 0
+            red_length: 0,
+            score: Score {
+                green: 0,
+                red: 0
+            },
+            mouse_point: Point::new(0,0),
+            selected_index: None,
+            target_index: None,
+            cell_mapping: [BoardCell::new(); BOARD_SIZE]
         }
+    }
+
+    fn find_mouse_intersecting_rect_index(&mut self) -> Option<usize> {
+        for i in 0..self.checker_rectangles.len() {
+            let  rect = self.board_tiles[i].borrow_mut();
+            if rect.contains_point(self.mouse_point)
+                && rect.height() > 0 && rect.width() > 0 {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    fn try_to_move(&mut self) {
+        // todo implement this!
     }
 }
 
 impl GameStateTrait for BoardState {
     fn update(&mut self) -> Signal {
-        Signal::Continue
+        if self.score.red == 0 || self.score.green == 0 {
+            Signal::GotoState(1)
+        } else {
+            match self.selected_index {
+                Some(i) => {
+                    match self.cell_mapping[i].occupant_index {
+                        Some(j) => {
+                        },
+                        _ => {}
+                    }
+                },
+                _ => {}
+            };
+            Signal::Continue
+        }
     }
 
-    fn render(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) -> Result<(), String> {
+    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
         canvas.clear();
         canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         canvas.fill_rect(canvas.viewport())?;
@@ -64,6 +133,21 @@ impl GameStateTrait for BoardState {
         match event {
             Event::Quit {..}
             | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
+            Event::MouseButtonDown {x, y, mouse_btn: MouseButton::Left, ..} => {
+                self.mouse_point.x = *x;
+                self.mouse_point.y = *y;
+                match self.selected_index {
+                  None => {
+                      self.selected_index = self.find_mouse_intersecting_rect_index();
+                      self.target_index = None;
+                  },
+                  Some(_) => {
+                      self.target_index = self.find_mouse_intersecting_rect_index();
+                      self.selected_index = None;
+                  },
+                };
+                Signal::Continue
+            },
             _ => Signal::Continue
         }
     }
@@ -72,10 +156,16 @@ impl GameStateTrait for BoardState {
         let mut tile_index = 0;
         const CONTAINER_WIDTH: usize = 100;
         const CHECKER_PADDING: usize = 20;
-        const OUTER_PADDING: usize = 20; // padding from the left most top corner
+        const OUTER_PADDING: usize = 20; // padding from the left most top corner of the screen
+
         for y in 0..BOARD_LENGTH {
             for x in 0..BOARD_LENGTH {
-                let container = &mut self.board_tiles[y * BOARD_LENGTH + x];
+                let flat_index = y * BOARD_LENGTH + x;
+                let container = &mut self.board_tiles[flat_index];
+                let cell = &mut self.cell_mapping[flat_index];
+
+                cell.x = x;
+                cell.y = y;
 
                 container.set_x((CONTAINER_WIDTH * x + OUTER_PADDING) as i32);
                 container.set_y((CONTAINER_WIDTH * y + OUTER_PADDING) as i32);
@@ -95,6 +185,7 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     self.green_length += 1;
+                    cell.occupant_index = Some(flat_index);
                 } else if y % 2 == x % 2 && y > (BOARD_LENGTH / 2) {
                     // red stuff
                     let checker_rect = &mut self.checker_rectangles[self.green_length + self.red_length];
@@ -103,9 +194,13 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     self.red_length += 1;
+                    cell.occupant_index = Some(flat_index);
                 }
             }
         }
+
+        self.score.red = self.red_length;
+        self.score.green = self.green_length;
 
         self.is_loaded = true;
         Ok(())
