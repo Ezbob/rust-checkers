@@ -16,6 +16,9 @@ use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
+const CONTAINER_WIDTH: usize = 100;
+const CHECKER_PADDING: usize = 20;
+const OUTER_PADDING: usize = 20; // padding from the left most top corner of the screen
 
 struct Score {
     green: usize,
@@ -49,7 +52,7 @@ pub struct BoardState {
     red_length: usize,
     score: Score,
     mouse_point: Point,
-    selected_index: Option<usize>,
+    source_index: Option<usize>,
     target_index: Option<usize>
 }
 
@@ -67,25 +70,78 @@ impl BoardState {
                 red: 0
             },
             mouse_point: Point::new(0,0),
-            selected_index: None,
+            source_index: None,
             target_index: None,
             cell_mapping: [BoardCell::new(); BOARD_SIZE]
         }
     }
 
+    /**
+     * Get two mutable references to the same checker_rectangles array
+     * In the special case where, we point to the same ref this just returns
+     * None
+     */
+    fn get_double_rect_mut(&mut self, first_index: usize, second_index: usize)
+        -> Option<(&mut rect::Rect, &mut rect::Rect)> {
+        let len = BOARD_SIZE;
+
+        if first_index >= len || second_index >= len || first_index == second_index {
+            None
+        } else {
+            unsafe {
+                let ar = &mut *(self.checker_rectangles
+                    .get_unchecked_mut(first_index) as *mut _);
+                let br = &mut *(self.checker_rectangles
+                    .get_unchecked_mut(second_index) as *mut _);
+                Some((ar, br))
+            }
+        }
+    }
+
     fn find_mouse_intersecting_rect_index(&mut self) -> Option<usize> {
-        for i in 0..self.checker_rectangles.len() {
-            let  rect = self.board_tiles[i].borrow_mut();
-            if rect.contains_point(self.mouse_point)
-                && rect.height() > 0 && rect.width() > 0 {
+        for i in 0..self.board_tiles.len() {
+            let rect = &mut self.board_tiles[i];
+            if rect.contains_point(self.mouse_point) {
                 return Some(i);
             }
         }
         None
     }
 
-    fn try_to_move(&mut self) {
-        // todo implement this!
+    fn convert_to_checker_index(&self, other_index: usize) -> usize {
+        self.cell_mapping[other_index].occupant_index.unwrap()
+    }
+
+    fn move_to_empty(&mut self, source_index: usize, target_index: usize) {
+        println!("Moving to empty {} -> {}", source_index, target_index);
+        let source_rect = &mut self.checker_rectangles[self.convert_to_checker_index(source_index)];
+        let target_tile = &self.board_tiles[target_index];
+
+        source_rect.x = target_tile.x() + CHECKER_PADDING as i32;
+        source_rect.y = target_tile.y() + CHECKER_PADDING as i32;
+    }
+
+    fn try_to_move(&mut self, x_offset: i32, y_offset: i32) {
+        let cell = &self.cell_mapping[self.source_index.unwrap()];
+        let x_next = cell.x as i32 + x_offset;
+        let y_next = cell.y as i32 + y_offset;
+        let row_length = (BOARD_LENGTH as i32);
+
+        if !((0 <= x_next && x_next <= row_length) &&
+            (0 <= y_next && y_next <= row_length)) {
+            return;
+        }
+
+        let search_index: usize = (x_next + (row_length * y_next)) as usize;
+        let container: &Rect = self.board_tiles.get(search_index).unwrap();
+        if container.contains_point(self.mouse_point) {
+            match self.cell_mapping[search_index].occupant_index {
+                Some(i) => {
+                    println!("occupied by {} at {}", i, search_index );
+                },
+                None => self.move_to_empty(self.source_index.unwrap(),search_index)
+            };
+        }
     }
 }
 
@@ -94,16 +150,24 @@ impl GameStateTrait for BoardState {
         if self.score.red == 0 || self.score.green == 0 {
             Signal::GotoState(1)
         } else {
-            match self.selected_index {
-                Some(i) => {
-                    match self.cell_mapping[i].occupant_index {
-                        Some(j) => {
-                        },
-                        _ => {}
-                    }
-                },
-                _ => {}
+            let source_exists = match self.source_index {
+                None => false,
+                _ => true
             };
+            let target_exists = match self.target_index {
+                None => false,
+                _ => true
+            };
+
+            if source_exists && target_exists {
+                self.try_to_move(1,1);
+                self.try_to_move(-1, 1);
+                self.try_to_move(1, -1);
+                self.try_to_move(-1,-1);
+
+                self.source_index = None;
+                self.target_index = None;
+            }
             Signal::Continue
         }
     }
@@ -116,6 +180,22 @@ impl GameStateTrait for BoardState {
 
         canvas.draw_rects(&self.board_tiles)?;
         canvas.fill_rects(&self.black_tiles)?;
+
+        match self.source_index {
+            Some(i) => {
+                canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
+                canvas.fill_rect(self.board_tiles[i]);
+            },
+            None => {}
+        };
+
+        match self.target_index {
+            Some(i) => {
+                canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
+                canvas.fill_rect(self.board_tiles[i]);
+            },
+            None => {}
+        };
 
         canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
         let green_rectangles = &self.checker_rectangles[0..self.green_length];
@@ -136,14 +216,12 @@ impl GameStateTrait for BoardState {
             Event::MouseButtonDown {x, y, mouse_btn: MouseButton::Left, ..} => {
                 self.mouse_point.x = *x;
                 self.mouse_point.y = *y;
-                match self.selected_index {
+                match self.source_index {
                   None => {
-                      self.selected_index = self.find_mouse_intersecting_rect_index();
-                      self.target_index = None;
+                      self.source_index = self.find_mouse_intersecting_rect_index();
                   },
                   Some(_) => {
                       self.target_index = self.find_mouse_intersecting_rect_index();
-                      self.selected_index = None;
                   },
                 };
                 Signal::Continue
@@ -154,9 +232,6 @@ impl GameStateTrait for BoardState {
 
     fn load(&mut self) -> Result<(), String> {
         let mut tile_index = 0;
-        const CONTAINER_WIDTH: usize = 100;
-        const CHECKER_PADDING: usize = 20;
-        const OUTER_PADDING: usize = 20; // padding from the left most top corner of the screen
 
         for y in 0..BOARD_LENGTH {
             for x in 0..BOARD_LENGTH {
@@ -184,17 +259,18 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
+                    cell.occupant_index = Some(self.green_length);
                     self.green_length += 1;
-                    cell.occupant_index = Some(flat_index);
                 } else if y % 2 == x % 2 && y > (BOARD_LENGTH / 2) {
                     // red stuff
-                    let checker_rect = &mut self.checker_rectangles[self.green_length + self.red_length];
+                    let index = self.green_length + self.red_length;
+                    let checker_rect = &mut self.checker_rectangles[index];
                     checker_rect.set_x((container.x() + CHECKER_PADDING as i32) as i32);
                     checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
+                    cell.occupant_index = Some(index);
                     self.red_length += 1;
-                    cell.occupant_index = Some(flat_index);
                 }
             }
         }
