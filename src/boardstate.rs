@@ -154,7 +154,7 @@ impl BoardState {
                 let br = &mut *(slice
                     .get_unchecked_mut(second_index) as *mut _);
                 let cr = &mut *(slice
-                    .get_unchecked_mut(second_index) as *mut _);
+                    .get_unchecked_mut(third_index) as *mut _);
                 Some((ar, br, cr))
             }
         }
