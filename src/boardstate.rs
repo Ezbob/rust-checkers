@@ -20,12 +20,31 @@ const CONTAINER_WIDTH: usize = 100;
 const CHECKER_PADDING: usize = 20;
 const OUTER_PADDING: usize = 20; // padding from the left most top corner of the screen
 
+trait RectExtras {
+    fn clear(& mut self);
+    fn move_to(&mut self, rect: &rect::Rect);
+}
+
+impl RectExtras for rect::Rect {
+    fn clear(&mut self) {
+        self.set_x(0);
+        self.set_y(0);
+        self.set_width(0);
+        self.set_height(0);
+    }
+
+    fn move_to(&mut self, rect: &rect::Rect) {
+        self.set_x(rect.x() + CHECKER_PADDING as i32);
+        self.set_y(rect.y() + CHECKER_PADDING as i32);
+    }
+}
+
 struct Score {
     green: usize,
     red: usize
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum PlayingColor {
     GREEN,
     RED
@@ -119,6 +138,28 @@ impl BoardState {
         }
     }
 
+    fn get_triple_ref_mut<T>(slice: &mut [T], first_index: usize, second_index: usize, third_index: usize)
+                             -> Option<(&mut T, &mut T, &mut T)> {
+        let len = slice.len();
+
+        if first_index >= len || second_index >= len || third_index >= len
+            || first_index == second_index
+            || first_index == third_index
+            || second_index == third_index {
+            None
+        } else {
+            unsafe {
+                let ar = &mut *(slice
+                    .get_unchecked_mut(first_index) as *mut _);
+                let br = &mut *(slice
+                    .get_unchecked_mut(second_index) as *mut _);
+                let cr = &mut *(slice
+                    .get_unchecked_mut(second_index) as *mut _);
+                Some((ar, br, cr))
+            }
+        }
+    }
+
     fn find_source_checker_rect(&mut self) -> Option<usize> {
         for i in 0..self.board_tiles.len() {
             let rect = &mut self.board_tiles[i];
@@ -149,11 +190,51 @@ impl BoardState {
         let source_rect = &mut self.checker_rectangles[source_map.occupant.unwrap().rect_render_index];
         let target_tile = &self.board_tiles[target_index]; // empty so we just use the tiles
 
-        source_rect.x = target_tile.x() + CHECKER_PADDING as i32;
-        source_rect.y = target_tile.y() + CHECKER_PADDING as i32;
+        source_rect.move_to(target_tile);
 
         target_map.occupant = source_map.occupant;
         source_map.occupant = None;
+    }
+
+    fn overtake(&mut self, source_index: usize, target_index: usize, destination_index: usize) {
+        let (source_cell, target_cell, destination_cell) =
+            BoardState::get_triple_ref_mut(&mut self.cell_mapping,
+                                    source_index, target_index, destination_index).unwrap();
+
+        let (source_rect, target_rect) =
+            BoardState::get_double_ref_mut(&mut self.checker_rectangles,
+                                           source_cell.occupant.unwrap().rect_render_index,
+                                            target_cell.occupant.unwrap().rect_render_index).unwrap();
+
+        let destination_tile = &self.board_tiles[destination_index];
+
+        target_rect.clear();
+        source_rect.move_to(destination_tile);
+
+        destination_cell.occupant = source_cell.occupant;
+        target_cell.occupant = None;
+        source_cell.occupant = None;
+    }
+
+    fn try_to_overtake(&mut self, target_index: usize, x_offset: i32, y_offset: i32) {
+        let clicked_cell = &self.cell_mapping[target_index];
+        let row_length = (BOARD_LENGTH as i32);
+        let x_next = clicked_cell.x as i32 + x_offset;
+        let y_next = clicked_cell.y as i32 + y_offset;
+
+        if !((0 <= x_next && x_next <= row_length) &&
+            (0 <= y_next && y_next <= row_length)) {
+            return;
+        }
+
+        let search_index: usize = (x_next + (row_length * y_next)) as usize;
+
+        match self.cell_mapping[search_index].occupant {
+            None => self.overtake(self.source_index.unwrap(),
+                                  self.target_index.unwrap(),
+                                  search_index),
+            Some(_) => {}
+        }
     }
 
     fn try_to_move(&mut self, x_offset: i32, y_offset: i32) {
@@ -172,7 +253,9 @@ impl BoardState {
         if container.contains_point(self.mouse_point) {
             match self.cell_mapping[search_index].occupant {
                 Some(checker) => {
-                    println!("occupied by {:?} at {}", checker, search_index );
+                    if checker.color != cell.occupant.unwrap().color {
+                        self.try_to_overtake(search_index, x_offset, y_offset);
+                    }
                 },
                 None => self.move_to_empty(self.source_index.unwrap(),search_index)
             };
@@ -219,7 +302,7 @@ impl GameStateTrait for BoardState {
         match self.source_index {
             Some(i) => {
                 canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
-                canvas.fill_rect(self.board_tiles[i]);
+                canvas.fill_rect(self.board_tiles[i])?;
             },
             None => {}
         };
