@@ -27,7 +27,7 @@ struct Score {
 
 #[derive(Copy, Clone)]
 struct BoardCell {
-    occupant_index: Option<usize>,
+    occupant_index: Option<usize>, // maps into checker_rectangles
     x: usize,
     y: usize
 }
@@ -221,8 +221,7 @@ impl GameStateTrait for BoardState {
 
     fn handle_event(&mut self, event: &Event) -> Signal {
         match event {
-            Event::Quit {..}
-            | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
+            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => Signal::Quit,
             Event::MouseButtonDown {x, y, mouse_btn: MouseButton::Left, ..} => {
                 self.mouse_point.x = *x;
                 self.mouse_point.y = *y;
@@ -260,9 +259,7 @@ impl GameStateTrait for BoardState {
                     black_tile.set_x(container.x());
                     black_tile.set_y(container.y());
                     tile_index += 1;
-                }
-
-                if y % 2 == x % 2 && y < (BOARD_LENGTH / 2 - 1) {
+                } else if y < (BOARD_LENGTH / 2 - 1) {
                     // green stuff
                     let checker_rect = &mut self.checker_rectangles[self.green_length];
                     checker_rect.set_x((container.x() + CHECKER_PADDING as i32) as i32);
@@ -271,7 +268,7 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     cell.occupant_index = Some(self.green_length);
                     self.green_length += 1;
-                } else if y % 2 == x % 2 && y > (BOARD_LENGTH / 2) {
+                } else if y > (BOARD_LENGTH / 2) {
                     // red stuff
                     let index = self.green_length + self.red_length;
                     let checker_rect = &mut self.checker_rectangles[index];
