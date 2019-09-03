@@ -81,24 +81,37 @@ impl BoardState {
      * In the special case where, we point to the same ref this just returns
      * None
      */
-    fn get_double_rect_mut(&mut self, first_index: usize, second_index: usize)
-        -> Option<(&mut rect::Rect, &mut rect::Rect)> {
-        let len = BOARD_SIZE;
+    fn get_double_ref_mut<T>(slice: &mut [T], first_index: usize, second_index: usize)
+                           -> Option<(&mut T, &mut T)> {
+        let len = slice.len();
 
         if first_index >= len || second_index >= len || first_index == second_index {
             None
         } else {
             unsafe {
-                let ar = &mut *(self.checker_rectangles
+                let ar = &mut *(slice
                     .get_unchecked_mut(first_index) as *mut _);
-                let br = &mut *(self.checker_rectangles
+                let br = &mut *(slice
                     .get_unchecked_mut(second_index) as *mut _);
                 Some((ar, br))
             }
         }
     }
 
-    fn find_mouse_intersecting_rect_index(&mut self) -> Option<usize> {
+    fn find_source_checker_rect(&mut self) -> Option<usize> {
+        for i in 0..self.board_tiles.len() {
+            let rect = &mut self.board_tiles[i];
+            if rect.contains_point(self.mouse_point) {
+                match self.cell_mapping[i].occupant_index {
+                    Some(_) => return Some(i), // the cell has to be occupied
+                    _ => {}
+                }
+            }
+        }
+        None
+    }
+
+    fn find_target_rect(&mut self) -> Option<usize> {
         for i in 0..self.board_tiles.len() {
             let rect = &mut self.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
@@ -113,12 +126,17 @@ impl BoardState {
     }
 
     fn move_to_empty(&mut self, source_index: usize, target_index: usize) {
-        println!("Moving to empty {} -> {}", source_index, target_index);
-        let source_rect = &mut self.checker_rectangles[self.convert_to_checker_index(source_index)];
-        let target_tile = &self.board_tiles[target_index];
+        let (source_map, target_map)
+            = BoardState::get_double_ref_mut(&mut self.cell_mapping, source_index, target_index).unwrap();
+
+        let source_rect = &mut self.checker_rectangles[source_map.occupant_index.unwrap()];
+        let target_tile = &self.board_tiles[target_index]; // empty so we just use the tiles
 
         source_rect.x = target_tile.x() + CHECKER_PADDING as i32;
         source_rect.y = target_tile.y() + CHECKER_PADDING as i32;
+
+        target_map.occupant_index = source_map.occupant_index;
+        source_map.occupant_index = None;
     }
 
     fn try_to_move(&mut self, x_offset: i32, y_offset: i32) {
@@ -189,14 +207,6 @@ impl GameStateTrait for BoardState {
             None => {}
         };
 
-        match self.target_index {
-            Some(i) => {
-                canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
-                canvas.fill_rect(self.board_tiles[i]);
-            },
-            None => {}
-        };
-
         canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
         let green_rectangles = &self.checker_rectangles[0..self.green_length];
         canvas.fill_rects(green_rectangles)?;
@@ -218,10 +228,10 @@ impl GameStateTrait for BoardState {
                 self.mouse_point.y = *y;
                 match self.source_index {
                   None => {
-                      self.source_index = self.find_mouse_intersecting_rect_index();
+                      self.source_index = self.find_source_checker_rect();
                   },
                   Some(_) => {
-                      self.target_index = self.find_mouse_intersecting_rect_index();
+                      self.target_index = self.find_target_rect();
                   },
                 };
                 Signal::Continue
