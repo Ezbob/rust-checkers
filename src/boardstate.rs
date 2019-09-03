@@ -25,9 +25,30 @@ struct Score {
     red: usize
 }
 
+#[derive(Debug, Copy, Clone)]
+enum PlayingColor {
+    GREEN,
+    RED
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Checker {
+    rect_render_index: usize,
+    color: PlayingColor
+}
+
+impl Checker {
+    fn new(color: PlayingColor, rect_render_index: usize) -> Checker {
+        Checker {
+            color,
+            rect_render_index
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 struct BoardCell {
-    occupant_index: Option<usize>, // maps into checker_rectangles
+    occupant: Option<Checker>, // maps into checker_rectangles
     x: usize,
     y: usize
 }
@@ -35,7 +56,7 @@ struct BoardCell {
 impl BoardCell {
     fn new() -> BoardCell {
         BoardCell {
-            occupant_index: None,
+            occupant: None,
             x: 0,
             y: 0
         }
@@ -102,7 +123,7 @@ impl BoardState {
         for i in 0..self.board_tiles.len() {
             let rect = &mut self.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
-                match self.cell_mapping[i].occupant_index {
+                match self.cell_mapping[i].occupant {
                     Some(_) => return Some(i), // the cell has to be occupied
                     _ => {}
                 }
@@ -121,22 +142,18 @@ impl BoardState {
         None
     }
 
-    fn convert_to_checker_index(&self, other_index: usize) -> usize {
-        self.cell_mapping[other_index].occupant_index.unwrap()
-    }
-
     fn move_to_empty(&mut self, source_index: usize, target_index: usize) {
         let (source_map, target_map)
             = BoardState::get_double_ref_mut(&mut self.cell_mapping, source_index, target_index).unwrap();
 
-        let source_rect = &mut self.checker_rectangles[source_map.occupant_index.unwrap()];
+        let source_rect = &mut self.checker_rectangles[source_map.occupant.unwrap().rect_render_index];
         let target_tile = &self.board_tiles[target_index]; // empty so we just use the tiles
 
         source_rect.x = target_tile.x() + CHECKER_PADDING as i32;
         source_rect.y = target_tile.y() + CHECKER_PADDING as i32;
 
-        target_map.occupant_index = source_map.occupant_index;
-        source_map.occupant_index = None;
+        target_map.occupant = source_map.occupant;
+        source_map.occupant = None;
     }
 
     fn try_to_move(&mut self, x_offset: i32, y_offset: i32) {
@@ -153,9 +170,9 @@ impl BoardState {
         let search_index: usize = (x_next + (row_length * y_next)) as usize;
         let container: &Rect = self.board_tiles.get(search_index).unwrap();
         if container.contains_point(self.mouse_point) {
-            match self.cell_mapping[search_index].occupant_index {
-                Some(i) => {
-                    println!("occupied by {} at {}", i, search_index );
+            match self.cell_mapping[search_index].occupant {
+                Some(checker) => {
+                    println!("occupied by {:?} at {}", checker, search_index );
                 },
                 None => self.move_to_empty(self.source_index.unwrap(),search_index)
             };
@@ -266,7 +283,8 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
-                    cell.occupant_index = Some(self.green_length);
+
+                    cell.occupant = Some(Checker::new(PlayingColor::GREEN, self.green_length));
                     self.green_length += 1;
                 } else if y > (BOARD_LENGTH / 2) {
                     // red stuff
@@ -276,7 +294,8 @@ impl GameStateTrait for BoardState {
                     checker_rect.set_y((container.y() + CHECKER_PADDING as i32) as i32);
                     checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                     checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
-                    cell.occupant_index = Some(index);
+
+                    cell.occupant = Some(Checker::new(PlayingColor::RED, index));
                     self.red_length += 1;
                 }
             }
