@@ -1,7 +1,7 @@
 extern crate sdl2;
 
 use crate::gamemachine::state::GameStateTrait;
-use crate::gamemachine::machine::Signal;
+use crate::gamemachine::runtime::Signal;
 
 use sdl2::rect;
 use sdl2::event::Event;

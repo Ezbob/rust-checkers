@@ -1,6 +1,6 @@
 extern crate sdl2;
 
-use crate::gamemachine::machine::Signal;
+use crate::gamemachine::runtime::Signal;
 
 use sdl2::render::Canvas;
 use sdl2::video::Window;

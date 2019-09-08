@@ -10,15 +10,15 @@ pub enum Signal {
     Continue
 }
 
-pub struct Machine {
+pub struct Runtime {
     should_run: bool,
     states: Vec<Rc<dyn GameStateTrait>>,
     current_index: usize
 }
 
-impl Machine {
-    pub fn new() -> Machine {
-        Machine {
+impl Runtime {
+    pub fn new() -> Runtime {
+        Runtime {
             should_run: true,
             current_index: 0,
             states: vec![]
@@ -35,16 +35,25 @@ impl Machine {
     }
 
     pub fn run<ContextType>(&mut self, context: &mut ContextType) -> Result<(), String> where ContextType: Context {
-        let mut pump = context.event_pump();
+        let mut pump = match context.event_pump() {
+            Ok(pump) => pump,
+            Err(error) => return Err(format!("Error when initializing pump: {}", error))
+        };
+        let mut clock = match context.clock() {
+            Ok(clock) => clock,
+            Err(error) => return Err(format!("Error when initializing clock: {}", error))
+        };
+        let mut canvas = match context.canvas() {
+            Ok(canvas) => canvas,
+            Err(error) => return Err(format!("Error when initializing canvas: {}", error))
+        };
 
         'running: while !self.states.is_empty() {
-
             let state = self.current_state_mut();
 
             if !state.is_loaded() {
-                match state.load() {
-                    Err(err) => return Err(err),
-                    _ => {}
+                if let Err(err) = state.load() {
+                    return Err(err)
                 }
             }
 
@@ -66,25 +75,22 @@ impl Machine {
                     }
                 }
 
-                {
-                    let clock = context.clock_mut();
-                    while clock.should_update() {
-                        match state.update() {
-                            Signal::Quit => break 'running,
-                            Signal::GotoState(state_index) => {
-                                self.current_index = state_index;
-                                break 'gameloop;
-                            }
-                            _ => {}
+                while clock.should_update() {
+                    match state.update() {
+                        Signal::Quit => break 'running,
+                        Signal::GotoState(state_index) => {
+                            self.current_index = state_index;
+                            break 'gameloop;
                         }
-
-                        clock.lag_update();
+                        _ => {}
                     }
+
+                    clock.lag_update();
                 }
 
-                state.render(context.canvas_mut())?;
+                state.render(&mut canvas)?;
 
-                context.clock_mut().tick();
+                clock.tick();
             }
         }
 
