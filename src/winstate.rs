@@ -6,9 +6,7 @@ use crate::gamemachine::machine::Signal;
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-use sdl2::ttf::{Font, Sdl2TtfContext};
-use sdl2::Sdl;
-use std::path::{PathBuf, Path};
+use sdl2::ttf::Font;
 
 pub struct WinState<'a> {
     font: Option<Font<'a, 'static>>

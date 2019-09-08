@@ -1,9 +1,7 @@
 extern crate sdl2;
 
-use crate::gamemachine::clock::Clock;
 use crate::gamemachine::machine::Signal;
-use std::rc::Rc;
-use sdl2::Sdl;
+
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::event::Event;
