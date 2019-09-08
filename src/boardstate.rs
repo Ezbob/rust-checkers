@@ -91,7 +91,8 @@ pub struct BoardState {
     score: Score,
     mouse_point: Point,
     source_index: Option<usize>,
-    target_index: Option<usize>
+    target_index: Option<usize>,
+    playing_color: PlayingColor
 }
 
 impl BoardState {
@@ -110,7 +111,16 @@ impl BoardState {
             mouse_point: Point::new(0,0),
             source_index: None,
             target_index: None,
-            cell_mapping: [BoardCell::new(); BOARD_SIZE]
+            cell_mapping: [BoardCell::new(); BOARD_SIZE],
+            playing_color: PlayingColor::GREEN
+        }
+    }
+
+    fn switch_turn(&mut self) {
+        if self.playing_color == PlayingColor::RED {
+            self.playing_color = PlayingColor::GREEN
+        } else {
+            self.playing_color = PlayingColor::RED
         }
     }
 
@@ -162,9 +172,10 @@ impl BoardState {
         for i in 0..self.board_tiles.len() {
             let rect = &mut self.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
-                match self.cell_mapping[i].occupant {
-                    Some(_) => return Some(i), // the cell has to be occupied
-                    _ => {}
+                if let Some(checker) = &self.cell_mapping[i].occupant {
+                    if checker.color == self.playing_color {
+                        return Some(i);
+                    }
                 }
             }
         }
@@ -192,6 +203,7 @@ impl BoardState {
 
         target_map.occupant = source_map.occupant;
         source_map.occupant = None;
+        self.switch_turn()
     }
 
     fn overtake(&mut self, source_index: usize, target_index: usize, destination_index: usize) {
