@@ -4,7 +4,6 @@ use crate::gamestate::GameStateTrait;
 use crate::gamestate::Signal;
 
 use sdl2::rect;
-use sdl2::render;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -12,7 +11,6 @@ use sdl2::rect::{Point, Rect};
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
-use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -218,7 +216,7 @@ impl BoardState {
 
     fn try_to_overtake(&mut self, target_index: usize, x_offset: i32, y_offset: i32) {
         let clicked_cell = &self.cell_mapping[target_index];
-        let row_length = (BOARD_LENGTH as i32);
+        let row_length = BOARD_LENGTH as i32;
         let x_next = clicked_cell.x as i32 + x_offset;
         let y_next = clicked_cell.y as i32 + y_offset;
 
@@ -241,7 +239,7 @@ impl BoardState {
         let cell = &self.cell_mapping[self.source_index.unwrap()];
         let x_next = cell.x as i32 + x_offset;
         let y_next = cell.y as i32 + y_offset;
-        let row_length = (BOARD_LENGTH as i32);
+        let row_length = BOARD_LENGTH as i32;
 
         if !((0 <= x_next && x_next <= row_length) &&
             (0 <= y_next && y_next <= row_length)) {

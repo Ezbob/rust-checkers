@@ -3,7 +3,6 @@ extern crate sdl2;
 use crate::gamestate::GameStateTrait;
 use crate::gamestate::Signal;
 
-use sdl2::rect::Rect;
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
@@ -21,7 +20,7 @@ impl GameStateTrait for WinState {
         Signal::Continue
     }
 
-    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
+    fn render(&self, _canvas: &mut Canvas<Window>) -> Result<(), String> {
         Ok(())
     }
 

@@ -43,7 +43,7 @@ impl<'a> GameMachine<'a> {
     }
 
     fn get_curr_mut_state(&mut self) -> &mut dyn GameStateTrait {
-        let state_rc : &mut Rc<dyn GameStateTrait> = self.states.get_mut(self.current_index).unwrap();
+        let state_rc= &mut self.states[self.current_index];
         Rc::get_mut(state_rc).unwrap()
     }
 
@@ -52,14 +52,12 @@ impl<'a> GameMachine<'a> {
 
         'running: while !self.states.is_empty() {
 
-            {
-                let state: &mut dyn GameStateTrait = self.get_curr_mut_state();
+            let state = self.get_curr_mut_state();
 
-                if !state.is_loaded() {
-                    match state.load() {
-                        Err(err) => return Err(err),
-                        _ => {}
-                    }
+            if !state.is_loaded() {
+                match state.load() {
+                    Err(err) => return Err(err),
+                    _ => {}
                 }
             }
 
