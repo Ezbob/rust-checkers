@@ -1,21 +1,28 @@
 extern crate sdl2;
 
-use crate::gamestate::GameStateTrait;
-use crate::gamestate::Signal;
+use crate::gamemachine::state::GameStateTrait;
+use crate::gamemachine::machine::Signal;
 
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
+use sdl2::ttf::{Font, Sdl2TtfContext};
+use sdl2::Sdl;
+use std::path::{PathBuf, Path};
 
-pub struct WinState;
+pub struct WinState<'a> {
+    font: Option<Font<'a, 'static>>
+}
 
-impl WinState {
-    pub fn new() -> WinState {
-        WinState
+impl<'a> WinState<'a> {
+    pub fn new() -> WinState<'a> {
+        WinState {
+            font: None
+        }
     }
 }
 
-impl GameStateTrait for WinState {
+impl<'a> GameStateTrait for WinState<'a> {
     fn update(&mut self) -> Signal {
         Signal::Continue
     }

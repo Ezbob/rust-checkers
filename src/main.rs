@@ -1,12 +1,14 @@
+
 extern crate sdl2;
 
-mod gamestate;
-mod gameclock;
 mod boardstate;
 mod winstate;
+mod gamemachine;
 
 use std::rc::Rc;
 use sdl2::Sdl;
+use gamemachine::machine;
+use gamemachine::clock;
 
 
 fn main() -> Result<(), String> {
@@ -23,8 +25,8 @@ fn main() -> Result<(), String> {
         .accelerated()
         .build().unwrap();
 
-    let mut clock = gameclock::GameClock::new(sdl_cxt.timer().unwrap(), 16.0);
-    let mut machine = gamestate::GameMachine::new(&sdl_cxt);
+    let mut clock = clock::Clock::new(sdl_cxt.timer().unwrap(), 16.0);
+    let mut machine = machine::Machine::new(&sdl_cxt);
 
     machine.add_state(Rc::new(boardstate::BoardState::new()));
     machine.add_state(Rc::new(winstate::WinState::new()));

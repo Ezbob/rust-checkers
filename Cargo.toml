@@ -5,6 +5,7 @@ authors = ["Anders Busch <andersbusch@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-sdl2 = "0.32"
+[dependencies.sdl2]
+version = "0.32"
+default-features = false
+features = ["ttf"]

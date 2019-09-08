@@ -1,13 +1,13 @@
 extern crate sdl2;
 
-use crate::gamestate::GameStateTrait;
-use crate::gamestate::Signal;
+use crate::gamemachine::state::GameStateTrait;
+use crate::gamemachine::machine::Signal;
 
 use sdl2::rect;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::{Point, Rect};
+use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
@@ -258,10 +258,10 @@ impl BoardState {
             return;
         }
 
-        let search_index: usize = (x_next + (row_length * y_next)) as usize;
-        let container: &Rect = self.board_tiles.get(search_index).unwrap();
+        let search_index = (x_next + (row_length * y_next)) as usize;
+        let container = self.board_tiles.get(search_index).unwrap();
         if container.contains_point(self.mouse_point) {
-            match self.cell_mapping[search_index].occupant {
+            match &self.cell_mapping[search_index].occupant {
                 Some(checker) => {
                     if checker.color != cell.occupant.unwrap().color {
                         self.try_to_overtake(search_index, x_offset, y_offset);

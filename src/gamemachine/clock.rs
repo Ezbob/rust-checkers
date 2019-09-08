@@ -2,7 +2,7 @@ extern crate sdl2;
 
 use sdl2::TimerSubsystem;
 
-pub struct GameClock {
+pub struct Clock {
     milli_sec_per_update: f64,
     now: u64,
     last: u64,
@@ -11,9 +11,9 @@ pub struct GameClock {
     timer: TimerSubsystem
 }
 
-impl GameClock {
-    pub fn new(timer: TimerSubsystem, ms: f64) -> GameClock {
-        GameClock {
+impl Clock {
+    pub fn new(timer: TimerSubsystem, ms: f64) -> Clock {
+        Clock {
             milli_sec_per_update: ms,
             now: 0,
             last: 0,
