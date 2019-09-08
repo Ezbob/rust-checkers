@@ -1,8 +1,6 @@
-
 extern crate sdl2;
 
-mod boardstate;
-mod winstate;
+mod gamestates;
 mod gamemachine;
 
 use std::rc::Rc;
@@ -11,7 +9,9 @@ use gamemachine::runtime;
 use gamemachine::clock;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
-use crate::gamemachine::resource::DefaultContext;
+use gamemachine::resource::DefaultContext;
+use gamestates::WinState;
+use gamestates::BoardState;
 
 
 fn main() -> Result<(), String> {
@@ -19,8 +19,8 @@ fn main() -> Result<(), String> {
 
     let mut runtime = runtime::Runtime::new();
 
-    runtime.add_state(Rc::new(boardstate::BoardState::new()));
-    runtime.add_state(Rc::new(winstate::WinState::new()));
+    runtime.add_state(Rc::new(BoardState::new()));
+    runtime.add_state(Rc::new(WinState::new()));
 
     let mut context = DefaultContext::new(&sdl_cxt);
 
