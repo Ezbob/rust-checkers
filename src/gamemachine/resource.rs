@@ -7,16 +7,25 @@ pub trait Context {
     fn canvas(&mut self) -> Result<Canvas<Window>, String>;
     fn clock(&mut self) -> Result<Clock, String>;
     fn event_pump(&mut self) -> Result<EventPump, String>;
+    fn extensions(&mut self) -> &mut ExtensionLibraries;
+}
+
+pub struct ExtensionLibraries {
+    pub ttf_context: Option<sdl2::ttf::Sdl2TtfContext>
 }
 
 pub struct DefaultContext<'a> {
-    sdl_cxt: &'a sdl2::Sdl
+    sdl_cxt: &'a sdl2::Sdl,
+    extensions: ExtensionLibraries
 }
 
 impl<'a> DefaultContext<'a> {
     pub fn new(sdl_cxt: &'a sdl2::Sdl) -> DefaultContext<'a> {
         DefaultContext {
-            sdl_cxt: &sdl_cxt
+            sdl_cxt: &sdl_cxt,
+            extensions: ExtensionLibraries {
+                ttf_context: Some(sdl2::ttf::init().unwrap())
+            }
         }
     }
 }
@@ -54,5 +63,9 @@ impl<'a> Context for DefaultContext<'a> {
 
     fn event_pump(&mut self) -> Result<EventPump, String> {
         self.sdl_cxt.event_pump()
+    }
+
+    fn extensions(&mut self) -> &mut ExtensionLibraries {
+        &mut self.extensions
     }
 }

@@ -11,6 +11,7 @@ use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
+use crate::gamemachine::resource::ExtensionLibraries;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -349,7 +350,7 @@ impl GameStateTrait for BoardState {
         }
     }
 
-    fn load(&mut self) -> Result<(), String> {
+    fn load(&mut self, _libs: &mut ExtensionLibraries) -> Result<(), String> {
         let mut tile_index = 0;
 
         for y in 0..BOARD_LENGTH {

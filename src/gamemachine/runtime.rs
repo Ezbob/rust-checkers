@@ -52,7 +52,7 @@ impl Runtime {
             let state = self.current_state_mut();
 
             if !state.is_loaded() {
-                if let Err(err) = state.load() {
+                if let Err(err) = state.load(context.extensions()) {
                     return Err(err)
                 }
             }
