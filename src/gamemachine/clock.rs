@@ -1,6 +1,8 @@
 extern crate sdl2;
 
 use sdl2::TimerSubsystem;
+use std::fmt::{Formatter, Result};
+
 
 pub struct Clock {
     milli_sec_per_update: f64,
@@ -9,6 +11,13 @@ pub struct Clock {
     frame_elapsed: f64,
     update_lag: f64,
     timer: TimerSubsystem
+}
+
+impl std::fmt::Debug for Clock {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "Clock( perSec: {:?}, now: {:?}, last: {:?}, frame_elapsed: {:?}, update_lag: {:?} )",
+               self.milli_sec_per_update, self.now, self.last, self.frame_elapsed, self.update_lag)
+    }
 }
 
 impl Clock {

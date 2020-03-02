@@ -4,11 +4,8 @@ mod gamestates;
 mod gamemachine;
 
 use std::rc::Rc;
-use sdl2::{Sdl, EventPump};
+use sdl2::Sdl;
 use gamemachine::runtime;
-use gamemachine::clock;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
 use gamemachine::resource::DefaultContext;
 use gamestates::WinState;
 use gamestates::BoardState;

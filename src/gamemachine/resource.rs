@@ -19,8 +19,8 @@ pub struct DefaultContext<'a> {
     extensions: ExtensionLibraries
 }
 
-impl<'a> DefaultContext<'a> {
-    pub fn new(sdl_cxt: &'a sdl2::Sdl) -> DefaultContext<'a> {
+impl DefaultContext<'_> {
+    pub fn new(sdl_cxt: &'_ sdl2::Sdl) -> DefaultContext<'_> {
         DefaultContext {
             sdl_cxt: &sdl_cxt,
             extensions: ExtensionLibraries {
@@ -30,7 +30,7 @@ impl<'a> DefaultContext<'a> {
     }
 }
 
-impl<'a> Context for DefaultContext<'a> {
+impl Context for DefaultContext<'_> {
 
     fn canvas(&mut self) -> Result<Canvas<Window>, String> {
         let video_sys = match self.sdl_cxt.video() {

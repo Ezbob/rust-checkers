@@ -6,9 +6,9 @@ use crate::gamemachine::runtime::Signal;
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-use sdl2::ttf::{Font, Sdl2TtfContext};
-use std::path::PathBuf;
-use std::rc::Rc;
+//use sdl2::ttf::{Font, Sdl2TtfContext};
+//use std::path::PathBuf;
+//use std::rc::Rc;
 use crate::gamemachine::resource::ExtensionLibraries;
 use sdl2::pixels::Color;
 
@@ -41,7 +41,7 @@ impl GameStateTrait for WinState {
 
         let font = ttf.load_font("./src/assets/B612_Mono/B612Mono-Regular.ttf", 20).unwrap();
 
-        let surface = font.render("Hello world")
+        let _surface = font.render("Hello world")
             .solid(Color::RGB(0xff, 0xff, 0xff)).unwrap();
 
         /*
