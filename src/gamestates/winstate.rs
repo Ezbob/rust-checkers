@@ -1,7 +1,7 @@
 extern crate sdl2;
 
 use crate::gamemachine::state::GameStateTrait;
-use crate::gamemachine::runtime::Signal;
+use crate::gamemachine::runtime_signal::RuntimeSignal;
 
 use sdl2::event::Event;
 use sdl2::video::Window;
@@ -21,8 +21,8 @@ impl WinState {
 }
 
 impl GameStateTrait for WinState {
-    fn update(&mut self) -> Signal {
-        Signal::Continue
+    fn update(&mut self) -> RuntimeSignal {
+        RuntimeSignal::Continue
     }
 
     fn render(&self, _canvas: &mut Canvas<Window>) -> Result<(), String> {
@@ -31,8 +31,8 @@ impl GameStateTrait for WinState {
         Ok(())
     }
 
-    fn handle_event(&mut self, _event: &Event) -> Signal {
-        Signal::Continue
+    fn handle_event(&mut self, _event: &Event) -> RuntimeSignal {
+        RuntimeSignal::Continue
     }
 
     fn load(&mut self, libs: &mut ExtensionLibraries) -> Result<(), String> {

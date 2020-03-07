@@ -1,14 +1,9 @@
 
 use crate::gamemachine::state::GameStateTrait;
 use crate::gamemachine::resource::Context;
+use crate::gamemachine::runtime_signal::RuntimeSignal;
 
 use std::rc::Rc;
-
-pub enum Signal {
-    Quit,
-    GotoState(usize),
-    Continue
-}
 
 pub struct Runtime {
     should_run: bool,
@@ -34,25 +29,14 @@ impl Runtime {
         Rc::get_mut(state_rc).unwrap()
     }
 
-    pub fn run<ContextType>(&mut self, context: &mut ContextType) -> Result<(), String> where ContextType: Context {
-        let mut pump = match context.event_pump() {
-            Ok(pump) => pump,
-            Err(error) => return Err(format!("Error when initializing pump: {}", error))
-        };
-        let mut clock = match context.clock() {
-            Ok(clock) => clock,
-            Err(error) => return Err(format!("Error when initializing clock: {}", error))
-        };
-        let mut canvas = match context.canvas() {
-            Ok(canvas) => canvas,
-            Err(error) => return Err(format!("Error when initializing canvas: {}", error))
-        };
+    pub fn run(&mut self, context: Context) -> Result<(), String> {
+        let Context { mut canvas, mut clock, mut event_pump, mut extensions } = context;
 
         'running: while !self.states.is_empty() {
             let state = self.current_state_mut();
 
             if !state.is_loaded() {
-                if let Err(err) = state.load(context.extensions()) {
+                if let Err(err) = state.load(&mut extensions) {
                     return Err(err)
                 }
             }
@@ -64,10 +48,10 @@ impl Runtime {
 
                 let state = self.current_state_mut();
 
-                for event in pump.poll_iter() {
+                for event in event_pump.poll_iter() {
                     match state.handle_event(&event) {
-                        Signal::Quit => break 'running,
-                        Signal::GotoState(state_index) => {
+                        RuntimeSignal::Quit => break 'running,
+                        RuntimeSignal::GotoState(state_index) => {
                             self.current_index = state_index;
                             break 'gameloop;
                         },
@@ -77,8 +61,8 @@ impl Runtime {
 
                 while clock.should_update() {
                     match state.update() {
-                        Signal::Quit => break 'running,
-                        Signal::GotoState(state_index) => {
+                        RuntimeSignal::Quit => break 'running,
+                        RuntimeSignal::GotoState(state_index) => {
                             self.current_index = state_index;
                             break 'gameloop;
                         }
