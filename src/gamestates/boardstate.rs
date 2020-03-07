@@ -103,50 +103,6 @@ impl BoardState {
         }
     }
 
-    /**
-     * Get two mutable references to the same checker_rectangles array
-     * In the special case where, we point to the same ref this just returns
-     * None
-     */
-    fn get_double_ref_mut<T>(slice: &mut [T], first_index: usize, second_index: usize)
-                           -> Option<(&mut T, &mut T)> {
-        let len = slice.len();
-
-        if first_index >= len || second_index >= len || first_index == second_index {
-            None
-        } else {
-            unsafe {
-                let ar = &mut *(slice
-                    .get_unchecked_mut(first_index) as *mut _);
-                let br = &mut *(slice
-                    .get_unchecked_mut(second_index) as *mut _);
-                Some((ar, br))
-            }
-        }
-    }
-
-    fn get_triple_ref_mut<T>(slice: &mut [T], first_index: usize, second_index: usize, third_index: usize)
-                             -> Option<(&mut T, &mut T, &mut T)> {
-        let len = slice.len();
-
-        if first_index >= len || second_index >= len || third_index >= len
-            || first_index == second_index
-            || first_index == third_index
-            || second_index == third_index {
-            None
-        } else {
-            unsafe {
-                let ar = &mut *(slice
-                    .get_unchecked_mut(first_index) as *mut _);
-                let br = &mut *(slice
-                    .get_unchecked_mut(second_index) as *mut _);
-                let cr = &mut *(slice
-                    .get_unchecked_mut(third_index) as *mut _);
-                Some((ar, br, cr))
-            }
-        }
-    }
-
     fn find_source_checker_rect(&self) -> Option<usize> {
         for i in 0..self.renderings.board_tiles.len() {
             let rect = &self.renderings.board_tiles[i];
@@ -299,48 +255,97 @@ impl BoardState {
         self.switch_turn();
     }
 
-    fn try_to_move(&mut self, source: usize, target: usize, try_n: i32) {
-        let target_n = target as i32;
-        if target_n == try_n {
-            match &self.cell_mapping[target] {
-                Checker::NONE => {
-                    self.move_to_empty(source, target);
-                }
-                _ => {}
-            }
+
+    fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
+        println!("source: {}, victim: {}, end: {}", source, victim, end);
+
+        match self.cell_mapping[end as usize] {
+            Checker::NONE => {
+
+            },
+            _ => {}
+        }
+    }
+
+    fn row_up(pos: usize, n: i32) -> i32 {
+        (pos as i32) - (n * BOARD_LENGTH as i32)
+    }
+
+    fn row_down(pos: usize, n: i32) -> i32 {
+        (pos as i32) + (n * BOARD_LENGTH as i32)
+    }
+
+    fn on_left_edge(pos: usize) -> bool {
+        (pos as i32) % BOARD_LENGTH as i32 == 0
+    }
+
+    fn on_right_edge(pos: usize) -> bool {
+        ((pos as i32) + 1) % BOARD_LENGTH as i32 == 0
+    }
+
+    fn is_in_bounds(pos: i32) -> bool {
+        pos >= 0 && pos < BOARD_SIZE as i32
+    }
+
+    fn check_next_down(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
+        let left_right_steps = 2;
+        let next_lower = BoardState::row_down(source_pos, left_right_steps);
+
+        if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_lower) {
+            let x_steps = if is_right { left_right_steps } else { -left_right_steps };
+            self.try_to_overtake(source_pos, target_pos, next_lower + x_steps);
+        }
+    }
+
+    fn check_next_up(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
+        let left_right_steps = 2;
+        let next_upper = BoardState::row_up(source_pos, left_right_steps);
+
+        if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_upper) {
+            let x_steps = if is_right { left_right_steps } else { -left_right_steps };
+            self.try_to_overtake(source_pos, target_pos, next_upper + x_steps);
         }
     }
 
     fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize,  i: i32) {
-        let lower = (source_pos as i32) + (i * BOARD_LENGTH as i32);
-        let upper = (source_pos as i32) - (i * BOARD_LENGTH as i32);
+        let lower = BoardState::row_down(source_pos, i);
+        let upper = BoardState::row_up(source_pos, i);
 
-        let is_on_right_edge = ((source_pos as i32) + 1) % BOARD_LENGTH as i32 == 0;
-        let is_on_left_edge = (source_pos as i32) % BOARD_LENGTH as i32 == 0;
-        let is_in_lower_bound = lower >= 0;
-        let is_in_upper_bound = upper < (BOARD_SIZE as i32);
-
-        if !is_on_right_edge {
-            //println!("right is not edge");
-            if is_in_lower_bound {
+        if !BoardState::on_right_edge(source_pos) {
+            if BoardState::is_in_bounds(lower) {
                 let right_lower = lower + i;
-                self.try_to_move(source_pos,target_pos, right_lower);
+                if self.cell_mapping[target_pos] == Checker::NONE && right_lower == target_pos as i32 {
+                    self.move_to_empty(source_pos,target_pos);
+                } else if right_lower == target_pos as i32 {
+                    self.check_next_down(source_pos, target_pos, true);
+                }
             }
-            if is_in_upper_bound {
+            if BoardState::is_in_bounds(upper) {
                 let right_upper = upper + i;
-                self.try_to_move(source_pos,target_pos, right_upper);
+                if self.cell_mapping[target_pos] == Checker::NONE && right_upper == target_pos as i32 {
+                    self.move_to_empty(source_pos,target_pos);
+                } else if right_upper == target_pos as i32 {
+                    self.check_next_up(source_pos, target_pos, true);
+                }
             }
         }
 
-        if !is_on_left_edge {
-            //println!("Left is not edge");
-            if is_in_lower_bound {
+        if !BoardState::on_left_edge(source_pos) {
+            if BoardState::is_in_bounds(lower) {
                 let left_lower = lower - i;
-                self.try_to_move(source_pos,target_pos, left_lower);
+                if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32 {
+                    self.move_to_empty(source_pos, target_pos);
+                } else if left_lower == target_pos as i32 {
+                    self.check_next_down(source_pos, target_pos, false);
+                }
             }
-            if is_in_upper_bound {
+            if BoardState::is_in_bounds(upper) {
                 let left_upper = upper - i;
-                self.try_to_move(source_pos,target_pos, left_upper);
+                if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32 {
+                    self.move_to_empty(source_pos, target_pos);
+                } else if left_upper == target_pos as i32 {
+                    self.check_next_up(source_pos, target_pos, false);
+                }
             }
         }
     }
