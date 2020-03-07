@@ -12,6 +12,7 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
 use crate::gamemachine::resource::ExtensionLibraries;
+use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -136,101 +137,7 @@ impl BoardState {
         None
     }
 
-    /*
-    fn move_to_empty(&mut self, source_index: usize, target_index: usize) {
-        let (source_map, target_map)
-            = BoardState::get_double_ref_mut(&mut self.cell_mapping, source_index, target_index).unwrap();
-
-        let rect_render_index = match source_map.occupant {
-            Checker::GREEN(render) => render,
-            Checker::RED(render) => render,
-            Checker::NONE => panic!("No source index for move_to_empty")
-        };
-
-        let source_rect = &mut self.renderings.checker_rectangles[rect_render_index];
-        let target_tile = &self.board_tiles[target_index]; // empty so we just use the tiles
-
-        source_rect.move_to(target_tile);
-
-        target_map.occupant = source_map.occupant;
-        source_map.occupant = Checker::NONE;
-        self.switch_turn()
-    }
-
-    fn overtake(&mut self, source_index: usize, target_index: usize, destination_index: usize) {
-        let (source_cell, target_cell, destination_cell) =
-            BoardState::get_triple_ref_mut(&mut self.cell_mapping,
-                                    source_index, target_index, destination_index).unwrap();
-
-        let (source_rect, target_rect) =
-            BoardState::get_double_ref_mut(&mut self.checker_rectangles,
-                                           source_cell.occupant.unwrap().rect_render_index,
-                                            target_cell.occupant.unwrap().rect_render_index).unwrap();
-
-        let destination_tile = &self.board_tiles[destination_index];
-
-        target_rect.clear();
-        source_rect.move_to(destination_tile);
-
-        destination_cell.occupant = source_cell.occupant;
-        target_cell.occupant = Checker::NONE;
-        source_cell.occupant = Checker::NONE;
-    }
-
-    fn try_to_overtake(&mut self, target_index: usize, x_offset: i32, y_offset: i32) {
-        let clicked_cell = &self.cell_mapping[target_index];
-        let row_length = BOARD_LENGTH as i32;
-        let x_next = clicked_cell.x as i32 + x_offset;
-        let y_next = clicked_cell.y as i32 + y_offset;
-
-        if !((0 <= x_next && x_next <= row_length) &&
-            (0 <= y_next && y_next <= row_length)) {
-            return;
-        }
-
-        let search_index: usize = (x_next + (row_length * y_next)) as usize;
-
-        match self.cell_mapping[search_index].occupant {
-            Checker::NONE => self.overtake(self.source_index.unwrap(),
-                                  self.target_index.unwrap(),
-                                  search_index),
-            _ => {}
-        }
-    }
-
-    fn try_to_move(&mut self, x_offset: i32, y_offset: i32) {
-        let cell = &self.cell_mapping[self.source_index.unwrap()];
-        let x_next = cell.x as i32 + x_offset;
-        let y_next = cell.y as i32 + y_offset;
-        let row_length = BOARD_LENGTH as i32;
-        let search_index = (x_next + (row_length * y_next)) as usize;
-
-        if !(0 <= search_index && search_index <= BOARD_SIZE) {
-            return;
-        }
-
-        let container = self.board_tiles.get(search_index).expect(format!("not found at {}, tiles length {}", search_index, self.board_tiles.len()).as_str());
-
-        if container.contains_point(self.mouse_point) {
-            match &self.cell_mapping[search_index].occupant {
-                Checker::RED(_) => {
-                    if cell.occupant == Checker::GREEN {
-                        self.try_to_overtake(search_index, x_offset, y_offset);
-                    }
-                },
-                Checker::GREEN(_) => {
-                    if cell.occupant == Checker::RED {
-                        self.try_to_overtake(search_index, x_offset, y_offset);
-                    }
-                },
-                Checker::NONE => self.move_to_empty(self.source_index.unwrap(),search_index)
-            };
-        }
-    }
-    */
-
     fn move_to_empty(&mut self, source: usize, target: usize) {
-
         match self.cell_mapping[source] {
             Checker::RED { sdl_rect, .. } => {
                 let rct = &mut self.renderings.red_rectangles[sdl_rect];
@@ -250,20 +157,46 @@ impl BoardState {
             },
             Checker::NONE => {}
         }
-
         self.cell_mapping[source] = Checker::NONE;
-        self.switch_turn();
     }
 
+    fn overtake(&mut self, source : usize, victim: usize, end: usize) {
+        match self.cell_mapping[victim] {
+            Checker::GREEN {sdl_rect, ..} => {
+                self.renderings.green_rectangles[sdl_rect].borrow_mut().clear();
+            },
+            Checker::RED { sdl_rect, .. } => {
+                self.renderings.red_rectangles[sdl_rect].borrow_mut().clear();
+            }
+            _ => {}
+        };
+        self.cell_mapping[victim] = Checker::NONE;
+        self.move_to_empty(source, end);
+    }
 
     fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
-        println!("source: {}, victim: {}, end: {}", source, victim, end);
-
-        match self.cell_mapping[end as usize] {
-            Checker::NONE => {
-
+        let is_enemy = match &self.cell_mapping[source] {
+            Checker::RED {..} => {
+                if let Checker::GREEN {..} = &self.cell_mapping[victim] {
+                    true
+                } else {
+                    false
+                }
             },
-            _ => {}
+            Checker::GREEN {..} => {
+                if let Checker::RED {..} = &self.cell_mapping[victim] {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => { false }
+        };
+
+        let is_next_empty = self.cell_mapping[end as usize] == Checker::NONE;
+
+        if is_enemy && is_next_empty {
+            self.overtake(source, victim, end as usize);
         }
     }
 
@@ -316,6 +249,7 @@ impl BoardState {
                 let right_lower = lower + i;
                 if self.cell_mapping[target_pos] == Checker::NONE && right_lower == target_pos as i32 {
                     self.move_to_empty(source_pos,target_pos);
+                    self.switch_turn();
                 } else if right_lower == target_pos as i32 {
                     self.check_next_down(source_pos, target_pos, true);
                 }
@@ -324,6 +258,7 @@ impl BoardState {
                 let right_upper = upper + i;
                 if self.cell_mapping[target_pos] == Checker::NONE && right_upper == target_pos as i32 {
                     self.move_to_empty(source_pos,target_pos);
+                    self.switch_turn();
                 } else if right_upper == target_pos as i32 {
                     self.check_next_up(source_pos, target_pos, true);
                 }
@@ -335,6 +270,7 @@ impl BoardState {
                 let left_lower = lower - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32 {
                     self.move_to_empty(source_pos, target_pos);
+                    self.switch_turn();
                 } else if left_lower == target_pos as i32 {
                     self.check_next_down(source_pos, target_pos, false);
                 }
@@ -343,6 +279,7 @@ impl BoardState {
                 let left_upper = upper - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32 {
                     self.move_to_empty(source_pos, target_pos);
+                    self.switch_turn();
                 } else if left_upper == target_pos as i32 {
                     self.check_next_up(source_pos, target_pos, false);
                 }
