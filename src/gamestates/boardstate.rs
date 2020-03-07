@@ -46,8 +46,8 @@ struct Score {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Checker {
-    GREEN { sdl_rect: usize, container: usize }, // sdl2 rect index
-    RED { sdl_rect: usize, container: usize },
+    GREEN ( usize ), // sdl2 rect index
+    RED ( usize ),
     NONE
 }
 
@@ -92,14 +92,14 @@ impl BoardState {
             source_index: None,
             target_index: None,
             cell_mapping: [Checker::NONE; BOARD_SIZE],
-            playing_color: Checker::GREEN { sdl_rect : 0, container: 0 }
+            playing_color: Checker::GREEN(0)
         }
     }
 
     fn switch_turn(&mut self) {
         match self.playing_color {
-            Checker::RED { sdl_rect, container} => self.playing_color = Checker::GREEN { sdl_rect, container },
-            Checker::GREEN { sdl_rect, container} => self.playing_color = Checker::RED { sdl_rect, container},
+            Checker::RED (sdl_rect) => self.playing_color = Checker::GREEN (sdl_rect),
+            Checker::GREEN (sdl_rect) => self.playing_color = Checker::RED (sdl_rect),
             Checker::NONE => {}
         }
     }
@@ -139,21 +139,17 @@ impl BoardState {
 
     fn move_to_empty(&mut self, source: usize, target: usize) {
         match self.cell_mapping[source] {
-            Checker::RED { sdl_rect, .. } => {
+            Checker::RED(sdl_rect) => {
                 let rct = &mut self.renderings.red_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                self.cell_mapping[target] = Checker::RED {
-                    sdl_rect, container: target
-                };
+                self.cell_mapping[target] = Checker::RED(sdl_rect);
             },
-            Checker::GREEN { sdl_rect, .. } => {
+            Checker::GREEN(sdl_rect) => {
                 let rct = &mut self.renderings.green_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                self.cell_mapping[target] = Checker::GREEN {
-                    sdl_rect, container: target
-                };
+                self.cell_mapping[target] = Checker::GREEN(sdl_rect);
             },
             Checker::NONE => {}
         }
@@ -162,11 +158,13 @@ impl BoardState {
 
     fn overtake(&mut self, source : usize, victim: usize, end: usize) {
         match self.cell_mapping[victim] {
-            Checker::GREEN {sdl_rect, ..} => {
+            Checker::GREEN(sdl_rect) => {
                 self.renderings.green_rectangles[sdl_rect].borrow_mut().clear();
+                self.score.green -= 1;
             },
-            Checker::RED { sdl_rect, .. } => {
+            Checker::RED(sdl_rect) => {
                 self.renderings.red_rectangles[sdl_rect].borrow_mut().clear();
+                self.score.red -= 1;
             }
             _ => {}
         };
@@ -377,7 +375,7 @@ impl GameStateTrait for BoardState {
                 checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                 checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
 
-                self.cell_mapping[flat_index] = Checker::GREEN { sdl_rect: self.green_length, container: flat_index };
+                self.cell_mapping[flat_index] = Checker::GREEN(self.green_length);
                 self.green_length += 1;
             } else if y > (BOARD_LENGTH / 2) {
                 // red stuff
@@ -387,7 +385,7 @@ impl GameStateTrait for BoardState {
                 checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                 checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
 
-                self.cell_mapping[flat_index] = Checker::RED { sdl_rect: self.red_length, container: flat_index };
+                self.cell_mapping[flat_index] = Checker::RED(self.red_length);
                 self.red_length += 1;
             }
         }
