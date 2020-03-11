@@ -11,7 +11,6 @@ use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
-use crate::gamemachine::resource::ExtensionLibraries;
 use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
@@ -288,7 +287,7 @@ impl BoardState {
 
 impl GameStateTrait for BoardState {
     fn update(&mut self) -> RuntimeSignal {
-        if self.score.red == 0 || self.score.green == 0 {
+        if self.score.red <= 0 || self.score.green <= 0 {
             RuntimeSignal::GotoState(1)
         } else {
 
@@ -349,7 +348,7 @@ impl GameStateTrait for BoardState {
         }
     }
 
-    fn load(&mut self, _libs: &mut ExtensionLibraries) -> Result<(), String> {
+    fn setup(&mut self) -> Result<(), String> {
         let mut tile_index = 0;
 
         for flat_index in 0..BOARD_SIZE {
@@ -397,7 +396,7 @@ impl GameStateTrait for BoardState {
         Ok(())
     }
 
-    fn is_loaded(&self) -> bool {
+    fn is_set_up(&self) -> bool {
         self.is_loaded
     }
 }

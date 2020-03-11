@@ -6,7 +6,7 @@ mod gamemachine;
 use std::rc::Rc;
 use sdl2::Sdl;
 use gamemachine::runtime::Runtime;
-use gamemachine::resource::Context;
+use gamemachine::context::DefaultContext;
 use gamestates::WinState;
 use gamestates::BoardState;
 
@@ -19,8 +19,5 @@ fn main() -> Result<(), String> {
     runtime.add_state(Rc::new(BoardState::new()));
     runtime.add_state(Rc::new(WinState::new()));
 
-    runtime.run(match Context::new(sdl_cxt) {
-        Ok(ctx) => ctx,
-        Err(e) => return Err(e)
-    })
+    runtime.run(DefaultContext::new(&sdl_cxt)?)
 }

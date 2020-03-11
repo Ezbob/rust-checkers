@@ -6,17 +6,15 @@ use crate::gamemachine::runtime_signal::RuntimeSignal;
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-//use sdl2::ttf::{Font, Sdl2TtfContext};
-//use std::path::PathBuf;
-//use std::rc::Rc;
-use crate::gamemachine::resource::ExtensionLibraries;
+use sdl2::keyboard::Keycode;
+
 use sdl2::pixels::Color;
 
-pub struct WinState;
+pub struct WinState {}
 
 impl WinState {
     pub fn new() -> WinState {
-        WinState
+        WinState {}
     }
 }
 
@@ -25,39 +23,26 @@ impl GameStateTrait for WinState {
         RuntimeSignal::Continue
     }
 
-    fn render(&self, _canvas: &mut Canvas<Window>) -> Result<(), String> {
+    fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
+        canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
+        canvas.clear();
 
-
+        canvas.present();
         Ok(())
     }
 
-    fn handle_event(&mut self, _event: &Event) -> RuntimeSignal {
-        RuntimeSignal::Continue
-    }
-
-    fn load(&mut self, libs: &mut ExtensionLibraries) -> Result<(), String> {
-
-        let ttf = libs.ttf_context.as_ref().unwrap();
-
-        let font = ttf.load_font("./src/assets/B612_Mono/B612Mono-Regular.ttf", 20).unwrap();
-
-        let _surface = font.render("Hello world")
-            .solid(Color::RGB(0xff, 0xff, 0xff)).unwrap();
-
-        /*
-        let mut asset_path = PathBuf::new();
-        asset_path.push("src");
-        asset_path.push("assets");
-        asset_path.push("B612_Mono");
-        asset_path.push("B612Mono-Regular.ttf");
-        if let Ok(font) = self.text_module.load_font(asset_path.as_path(), 18) {
-            self.font = Some(Rc::new(font));
+    fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
+        match event {
+            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => RuntimeSignal::Quit,
+            _ => RuntimeSignal::Continue
         }
-        */
+    }
+
+    fn setup(&mut self) -> Result<(), String> {
         Ok(())
     }
 
-    fn is_loaded(&self) -> bool {
+    fn is_set_up(&self) -> bool {
         true
     }
 }

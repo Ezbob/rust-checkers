@@ -1,9 +1,11 @@
 
 use crate::gamemachine::state::GameStateTrait;
-use crate::gamemachine::resource::Context;
+use crate::gamemachine::context::Context;
 use crate::gamemachine::runtime_signal::RuntimeSignal;
 
 use std::rc::Rc;
+use crate::gamemachine::clock::Clock;
+use sdl2::EventPump;
 
 pub struct Runtime {
     should_run: bool,
@@ -25,56 +27,87 @@ impl Runtime {
     }
 
     fn current_state_mut(&mut self) -> &mut dyn GameStateTrait {
-        let state_rc= &mut self.states[self.current_index];
-        Rc::get_mut(state_rc).unwrap()
+        Rc::get_mut(&mut self.states[self.current_index]).unwrap()
     }
 
-    pub fn run(&mut self, context: Context) -> Result<(), String> {
-        let Context { mut canvas, mut clock, mut event_pump, mut extensions } = context;
+    fn current_state(&self) -> &dyn GameStateTrait {
+        self.states[self.current_index].as_ref()
+    }
+
+    fn handle_update(&mut self, clock: &mut Clock) -> RuntimeSignal {
+        while clock.should_update() {
+            match self.current_state_mut().update() {
+                RuntimeSignal::GotoState(i) => return RuntimeSignal::GotoState(i),
+                RuntimeSignal::Quit => return RuntimeSignal::Quit,
+                _ => {}
+            }
+            clock.lag_update();
+        }
+        RuntimeSignal::Continue
+    }
+
+    fn handle_events(&mut self, event_pump: &mut EventPump) -> RuntimeSignal {
+        let state = self.current_state_mut();
+        for event in event_pump.poll_iter() {
+            match state.handle_event(&event) {
+                RuntimeSignal::Quit => {
+                    return RuntimeSignal::Quit;
+                },
+                RuntimeSignal::GotoState(state_index) => {
+                    return RuntimeSignal::GotoState(state_index);
+                },
+                _ => {}
+            }
+        }
+        RuntimeSignal::Continue
+    }
+
+    fn handle_setup(&mut self) -> Result<(), String> {
+        let state = self.current_state_mut();
+
+        if !state.is_set_up() {
+            state.setup()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn run<T>(&mut self, mut context: T) -> Result<(), String> where T: Context {
 
         'running: while !self.states.is_empty() {
-            let state = self.current_state_mut();
 
-            if !state.is_loaded() {
-                if let Err(err) = state.load(&mut extensions) {
-                    return Err(err)
-                }
-            }
+            self.handle_setup()?;
 
             'gameloop: loop {
                 if !self.should_run {
                     break 'running;
                 }
 
-                let state = self.current_state_mut();
-
-                for event in event_pump.poll_iter() {
-                    match state.handle_event(&event) {
-                        RuntimeSignal::Quit => break 'running,
-                        RuntimeSignal::GotoState(state_index) => {
-                            self.current_index = state_index;
-                            break 'gameloop;
-                        },
-                        _ => {}
-                    }
+                match self.handle_events(context.event_pump()) {
+                    RuntimeSignal::Quit => {
+                        break 'running;
+                    },
+                    RuntimeSignal::GotoState(i) =>  {
+                        self.current_index = i;
+                        break 'gameloop;
+                    },
+                    _ => {}
                 }
 
-                while clock.should_update() {
-                    match state.update() {
-                        RuntimeSignal::Quit => break 'running,
-                        RuntimeSignal::GotoState(state_index) => {
-                            self.current_index = state_index;
-                            break 'gameloop;
-                        }
-                        _ => {}
-                    }
-
-                    clock.lag_update();
+                match self.handle_update(context.clock()) {
+                    RuntimeSignal::Quit => {
+                        break 'running;
+                    },
+                    RuntimeSignal::GotoState(i) =>  {
+                        self.current_index = i;
+                        break 'gameloop;
+                    },
+                    _ => {}
                 }
 
-                state.render(&mut canvas)?;
+                self.current_state().render(context.canvas())?;
 
-                clock.tick();
+                context.clock().tick();
             }
         }
 
