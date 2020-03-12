@@ -6,6 +6,7 @@ use crate::gamemachine::runtime_signal::RuntimeSignal;
 use std::rc::Rc;
 use crate::gamemachine::clock::Clock;
 use sdl2::EventPump;
+use crate::assets::GameAssets;
 
 pub struct Runtime {
     should_run: bool,
@@ -62,21 +63,21 @@ impl Runtime {
         RuntimeSignal::Continue
     }
 
-    fn handle_setup(&mut self) -> Result<(), String> {
+    fn handle_setup(&mut self, ass: &GameAssets) -> Result<(), String> {
         let state = self.current_state_mut();
 
         if !state.is_set_up() {
-            state.setup()?;
+            state.setup(ass)?;
         }
 
         Ok(())
     }
 
-    pub fn run<T>(&mut self, mut context: T) -> Result<(), String> where T: Context {
+    pub fn run<T>(&mut self, mut context: T, ass: &GameAssets) -> Result<(), String> where T: Context {
 
         'running: while !self.states.is_empty() {
 
-            self.handle_setup()?;
+            self.handle_setup(ass)?;
 
             'gameloop: loop {
                 if !self.should_run {

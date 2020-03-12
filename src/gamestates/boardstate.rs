@@ -12,6 +12,7 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
 use std::borrow::BorrowMut;
+use crate::assets::GameAssets;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -54,13 +55,13 @@ struct RenderRectangles {
     board_tiles: [rect::Rect; BOARD_SIZE],
     black_tiles: [rect::Rect; BOARD_SIZE / 2],
     green_rectangles: [rect::Rect; BOARD_SIZE / 4],
-    red_rectangles: [rect::Rect; BOARD_SIZE / 4]
+    red_rectangles: [rect::Rect; BOARD_SIZE / 4],
+    indicator: rect::Rect
 }
 
 pub struct BoardState {
     is_loaded: bool,
     renderings: RenderRectangles,
-
     cell_mapping: [Checker; BOARD_SIZE],
     green_length: usize,
     red_length: usize,
@@ -79,7 +80,8 @@ impl BoardState {
                 board_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE],
                 black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
                 green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
-                red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4]
+                red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
+                indicator: rect::Rect::new(0, 0, 0, 0)
             },
             green_length: 0,
             red_length: 0,
@@ -324,6 +326,18 @@ impl GameStateTrait for BoardState {
         canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
         canvas.fill_rects(&self.renderings.red_rectangles)?;
 
+        match self.playing_color {
+            Checker::RED(..)  => {
+                canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
+            },
+            Checker::GREEN(..) => {
+                canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
+            },
+            Checker::NONE => {}
+        };
+
+        canvas.fill_rect(self.renderings.indicator)?;
+
         canvas.present();
         Ok(())
     }
@@ -348,8 +362,18 @@ impl GameStateTrait for BoardState {
         }
     }
 
-    fn setup(&mut self) -> Result<(), String> {
+    fn setup(&mut self, _ass: &GameAssets) -> Result<(), String> {
         let mut tile_index = 0;
+
+        {
+            let indicator = &mut self.renderings.indicator;
+            let right = (CHECKER_PADDING * 3) as i32;
+            let bottom = (CONTAINER_WIDTH * 8) as i32;
+            indicator.set_width(20);
+            indicator.set_height(20);
+            indicator.set_right(right);
+            indicator.set_bottom(bottom);
+        }
 
         for flat_index in 0..BOARD_SIZE {
             let x = flat_index % BOARD_LENGTH;

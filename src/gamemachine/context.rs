@@ -11,9 +11,9 @@ pub trait Context {
 }
 
 pub struct DefaultContext {
-    pub canvas: Canvas<Window>,
-    pub clock: Clock,
-    pub event_pump: EventPump
+    canvas: Canvas<Window>,
+    clock: Clock,
+    event_pump: EventPump
 }
 
 impl Context for DefaultContext {
@@ -46,6 +46,8 @@ impl DefaultContext {
         let clock = sdl_cxt.timer().map(|timer| Clock::new(timer, 16.0))?;
 
         let event_pump = sdl_cxt.event_pump()?;
+
+
 
         Ok(DefaultContext {
             canvas,
