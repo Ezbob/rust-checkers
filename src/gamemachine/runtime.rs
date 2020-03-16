@@ -6,6 +6,7 @@ use crate::gamemachine::runtime_signal::RuntimeSignal;
 use std::rc::Rc;
 use crate::gamemachine::clock::Clock;
 use sdl2::EventPump;
+use sdl2::EventSubsystem;
 use crate::assets::GameAssets;
 
 pub struct Runtime {
@@ -35,9 +36,9 @@ impl Runtime {
         self.states[self.current_index].as_ref()
     }
 
-    fn handle_update(&mut self, clock: &mut Clock) -> RuntimeSignal {
+    fn handle_update(&mut self, clock: &mut Clock, events: &EventSubsystem) -> RuntimeSignal {
         while clock.should_update() {
-            match self.current_state_mut().update() {
+            match self.current_state_mut().update(events) {
                 RuntimeSignal::GotoState(i) => return RuntimeSignal::GotoState(i),
                 RuntimeSignal::Quit => return RuntimeSignal::Quit,
                 _ => {}
@@ -49,6 +50,7 @@ impl Runtime {
 
     fn handle_events(&mut self, event_pump: &mut EventPump) -> RuntimeSignal {
         let state = self.current_state_mut();
+
         for event in event_pump.poll_iter() {
             match state.handle_event(&event) {
                 RuntimeSignal::Quit => {
@@ -73,7 +75,7 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn run<T>(&mut self, mut context: T, ass: &GameAssets) -> Result<(), String> where T: Context {
+    pub fn run<T>(&mut self, mut context: T, ass: &GameAssets, event_sys: &EventSubsystem) -> Result<(), String> where T: Context {
 
         'running: while !self.states.is_empty() {
 
@@ -95,7 +97,7 @@ impl Runtime {
                     _ => {}
                 }
 
-                match self.handle_update(context.clock()) {
+                match self.handle_update(context.clock(), event_sys) {
                     RuntimeSignal::Quit => {
                         break 'running;
                     },

@@ -9,7 +9,7 @@ use crate::assets::GameAssets;
 
 
 pub trait GameStateTrait {
-    fn update(&mut self) -> RuntimeSignal;
+    fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal;
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String>;
     fn handle_event(&mut self, event: &Event) -> RuntimeSignal;
     fn setup(&mut self, ass: &GameAssets) -> Result<(), String>;

@@ -13,6 +13,7 @@ use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
 use std::borrow::BorrowMut;
 use crate::assets::GameAssets;
+use crate::game_events::WinColorEvent;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -288,8 +289,15 @@ impl BoardState {
 }
 
 impl GameStateTrait for BoardState {
-    fn update(&mut self) -> RuntimeSignal {
+    fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
         if self.score.red <= 0 || self.score.green <= 0 {
+
+            if self.score.red <= 0 {
+                event.push_custom_event(WinColorEvent::new_green()).unwrap();
+            } else {
+                event.push_custom_event(WinColorEvent::new_red()).unwrap();
+            }
+
             RuntimeSignal::GotoState(1)
         } else {
 

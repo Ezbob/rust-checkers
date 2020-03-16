@@ -11,11 +11,13 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use crate::assets::GameAssets;
 use sdl2::surface::Surface;
+use crate::game_events::WinColorEvent;
 
 pub struct WinState<'a> {
     red_text: Option<Surface<'a>>,
     green_text: Option<Surface<'a>>,
-    is_set_up: bool
+    is_set_up: bool,
+    is_green_win: bool
 }
 
 impl<'a> WinState<'a> {
@@ -23,13 +25,14 @@ impl<'a> WinState<'a> {
         WinState {
             red_text: None,
             green_text: None,
-            is_set_up: false
+            is_set_up: false,
+            is_green_win: false
         }
     }
 }
 
 impl<'a> GameStateTrait for WinState<'a> {
-    fn update(&mut self) -> RuntimeSignal {
+    fn update(&mut self, _event: &sdl2::EventSubsystem) -> RuntimeSignal {
         RuntimeSignal::Continue
     }
 
@@ -39,25 +42,46 @@ impl<'a> GameStateTrait for WinState<'a> {
 
         let texture_creator = canvas.texture_creator();
 
-        match &self.red_text {
-            Some(s) => {
-                let text = texture_creator
-                    .create_texture_from_surface(s)
-                    .map_err(|e| e.to_string())?;
+        if self.is_green_win {
+            match &self.green_text {
+                Some(surf) => {
+                    let text = texture_creator.create_texture_from_surface(surf)
+                        .map_err(|e| e.to_string())?;
 
-                let win = canvas.window();
+                    let win = canvas.window();
 
-                let (sw, sh) = win.size();
-                let TextureQuery{width, height, ..} = text.query();
+                    let (sw, sh) = win.size();
+                    let TextureQuery{width, height, ..} = text.query();
 
-                let half_x = ((sw / 2) as i32) - (width as i32 / 2);
-                let half_y = ((sh / 2) as i32) - (height as i32 / 2);
+                    let half_x = ((sw / 2) as i32) - (width as i32 / 2);
+                    let half_y = ((sh / 2) as i32) - (height as i32 / 2);
 
-                let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height ));
+                    let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height ));
 
-                canvas.copy(&text, None, dst )?;
-            },
-            _ => {}
+                    canvas.copy(&text, None, dst )?;
+                },
+                _ => {}
+            }
+        } else {
+            match &self.red_text {
+                Some(surf) => {
+                    let text = texture_creator.create_texture_from_surface(surf)
+                        .map_err(|e| e.to_string())?;
+
+                    let win = canvas.window();
+
+                    let (sw, sh) = win.size();
+                    let TextureQuery{width, height, ..} = text.query();
+
+                    let half_x = ((sw / 2) as i32) - (width as i32 / 2);
+                    let half_y = ((sh / 2) as i32) - (height as i32 / 2);
+
+                    let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height ));
+
+                    canvas.copy(&text, None, dst )?;
+                },
+                _ => {}
+            }
         }
 
         canvas.present();
@@ -66,9 +90,20 @@ impl<'a> GameStateTrait for WinState<'a> {
 
     fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
         match event {
-            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => RuntimeSignal::Quit,
-            _ => RuntimeSignal::Continue
+            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => return RuntimeSignal::Quit,
+            _ => {}
+        };
+
+        if event.is_user_event() {
+            match &event.as_user_event_type::<WinColorEvent>() {
+                Some(wce) => {
+                    self.is_green_win = wce.is_green();
+                },
+                _ => {}
+            }
         }
+
+        RuntimeSignal::Continue
     }
 
     fn setup(&mut self, ass: &GameAssets) -> Result<(), String> {
