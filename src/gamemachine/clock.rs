@@ -3,20 +3,22 @@ extern crate sdl2;
 use sdl2::TimerSubsystem;
 use std::fmt::{Formatter, Result};
 
-
 pub struct Clock {
     milli_sec_per_update: f64,
     now: u64,
     last: u64,
     frame_elapsed: f64,
     update_lag: f64,
-    timer: TimerSubsystem
+    timer: TimerSubsystem,
 }
 
 impl std::fmt::Debug for Clock {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Clock( perSec: {:?}, now: {:?}, last: {:?}, frame_elapsed: {:?}, update_lag: {:?} )",
-               self.milli_sec_per_update, self.now, self.last, self.frame_elapsed, self.update_lag)
+        write!(
+            f,
+            "Clock( perSec: {:?}, now: {:?}, last: {:?}, frame_elapsed: {:?}, update_lag: {:?} )",
+            self.milli_sec_per_update, self.now, self.last, self.frame_elapsed, self.update_lag
+        )
     }
 }
 
@@ -28,14 +30,15 @@ impl Clock {
             last: 0,
             frame_elapsed: 0.0,
             update_lag: 0.0,
-            timer
+            timer,
         }
     }
 
     pub fn tick(&mut self) {
         self.last = self.now;
         self.now = self.timer.performance_counter();
-        self.frame_elapsed = ((self.now - self.last) * 1000 / self.timer.performance_frequency()) as f64;
+        self.frame_elapsed =
+            ((self.now - self.last) * 1000 / self.timer.performance_frequency()) as f64;
         self.update_lag += self.frame_elapsed;
     }
 

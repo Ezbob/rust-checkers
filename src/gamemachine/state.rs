@@ -2,11 +2,10 @@ extern crate sdl2;
 
 use crate::gamemachine::runtime_signal::RuntimeSignal;
 
+use crate::assets::GameAssets;
+use sdl2::event::Event;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
-use sdl2::event::Event;
-use crate::assets::GameAssets;
-
 
 pub trait GameStateTrait {
     fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal;

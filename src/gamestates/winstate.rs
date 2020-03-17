@@ -1,23 +1,23 @@
 extern crate sdl2;
 
-use crate::gamemachine::state::GameStateTrait;
 use crate::gamemachine::runtime_signal::RuntimeSignal;
+use crate::gamemachine::state::GameStateTrait;
 
 use sdl2::event::Event;
-use sdl2::video::Window;
-use sdl2::render::{Canvas, TextureQuery};
 use sdl2::keyboard::Keycode;
+use sdl2::render::{Canvas, TextureQuery};
+use sdl2::video::Window;
 
-use sdl2::pixels::Color;
 use crate::assets::GameAssets;
-use sdl2::surface::Surface;
 use crate::game_events::WinColorEvent;
+use sdl2::pixels::Color;
+use sdl2::surface::Surface;
 
 pub struct WinState<'a> {
     red_text: Option<Surface<'a>>,
     green_text: Option<Surface<'a>>,
     is_set_up: bool,
-    is_green_win: bool
+    is_green_win: bool,
 }
 
 impl<'a> WinState<'a> {
@@ -26,7 +26,7 @@ impl<'a> WinState<'a> {
             red_text: None,
             green_text: None,
             is_set_up: false,
-            is_green_win: false
+            is_green_win: false,
         }
     }
 }
@@ -37,49 +37,42 @@ impl<'a> GameStateTrait for WinState<'a> {
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
+        canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
         canvas.clear();
 
         let texture_creator = canvas.texture_creator();
 
         if self.is_green_win {
-            match &self.green_text {
-                Some(surf) => {
-                    let text = texture_creator.create_texture_from_surface(surf)
-                        .map_err(|e| e.to_string())?;
+            if let Some(surf) = &self.green_text {
+                let text = texture_creator
+                    .create_texture_from_surface(surf)
+                    .map_err(|e| e.to_string())?;
 
-                    let win = canvas.window();
+                let center = canvas.viewport().center();
+                let TextureQuery { width, height, .. } = text.query();
 
-                    let (sw, sh) = win.size();
-                    let TextureQuery{width, height, ..} = text.query();
+                let half_x = center.x() - (width as i32 / 2);
+                let half_y = center.y() - (height as i32 / 2);
 
-                    let half_x = ((sw / 2) as i32) - (width as i32 / 2);
-                    let half_y = ((sh / 2) as i32) - (height as i32 / 2);
+                let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height));
 
-                    let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height ));
-
-                    canvas.copy(&text, None, dst )?;
-                },
-                _ => {}
+                canvas.copy(&text, None, dst)?;
             }
         } else {
-            match &self.red_text {
-                Some(surf) => {
-                    let text = texture_creator.create_texture_from_surface(surf)
-                        .map_err(|e| e.to_string())?;
+            if let Some(surf) = &self.red_text {
+                let text = texture_creator
+                    .create_texture_from_surface(surf)
+                    .map_err(|e| e.to_string())?;
 
-                    let win = canvas.window();
+                let center = canvas.viewport().center();
+                let TextureQuery { width, height, .. } = text.query();
 
-                    let (sw, sh) = win.size();
-                    let TextureQuery{width, height, ..} = text.query();
+                let half_x = center.x() - (width as i32 / 2);
+                let half_y = center.y() - (height as i32 / 2);
 
-                    let half_x = ((sw / 2) as i32) - (width as i32 / 2);
-                    let half_y = ((sh / 2) as i32) - (height as i32 / 2);
+                let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height));
 
-                    let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height ));
-
-                    canvas.copy(&text, None, dst )?;
-                },
-                _ => {}
+                canvas.copy(&text, None, dst)?;
             }
         }
 
@@ -89,7 +82,11 @@ impl<'a> GameStateTrait for WinState<'a> {
 
     fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
         match event {
-            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => return RuntimeSignal::Quit,
+            Event::Quit { .. }
+            | Event::KeyDown {
+                keycode: Some(Keycode::Escape),
+                ..
+            } => return RuntimeSignal::Quit,
             _ => {}
         };
 
@@ -97,7 +94,7 @@ impl<'a> GameStateTrait for WinState<'a> {
             match &event.as_user_event_type::<WinColorEvent>() {
                 Some(wce) => {
                     self.is_green_win = wce.is_green();
-                },
+                }
                 _ => {}
             }
         }
@@ -106,13 +103,15 @@ impl<'a> GameStateTrait for WinState<'a> {
     }
 
     fn setup(&mut self, ass: &GameAssets) -> Result<(), String> {
-        let redtext = ass.font_vt323_big
+        let redtext = ass
+            .font_vt323_big
             .render("Red wins!")
-            .blended(Color::RGB(0x0,0x0, 0x0))
+            .solid(Color::RGB(0xef, 0x0, 0x0))
             .map_err(|e| e.to_string())?;
-        let greentext = ass.font_vt323_big
+        let greentext = ass
+            .font_vt323_big
             .render("Green wins!")
-            .blended(Color::RGB(0x0,0x0, 0x0))
+            .solid(Color::RGB(0x0, 0xef, 0x0))
             .map_err(|e| e.to_string())?;
         self.red_text = Some(redtext);
         self.green_text = Some(greentext);

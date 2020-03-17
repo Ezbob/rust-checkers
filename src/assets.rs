@@ -2,7 +2,7 @@ use sdl2::ttf::{Font, Sdl2TtfContext};
 use std::path::PathBuf;
 
 pub struct GameAssets<'a> {
-    pub font_vt323_big: Font<'a, 'static>
+    pub font_vt323_big: Font<'a, 'static>,
 }
 
 impl<'a> GameAssets<'a> {
@@ -10,12 +10,10 @@ impl<'a> GameAssets<'a> {
         let mut path = PathBuf::new();
         path.push("src");
         path.push("assets");
-        path.push("VT323");
-        path.push("VT323-Regular.ttf");
+        path.push("B612_Mono");
+        path.push("B612Mono-Regular.ttf");
 
         let font_vt323_big = ttf.load_font(path, 23).unwrap();
-        GameAssets {
-            font_vt323_big
-        }
+        GameAssets { font_vt323_big }
     }
 }

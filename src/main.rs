@@ -3,18 +3,17 @@ extern crate sdl2;
 #[macro_use]
 mod gamestates;
 
-mod gamemachine;
 mod assets;
 mod game_events;
+mod gamemachine;
 
-use std::rc::Rc;
-use gamemachine::runtime::Runtime;
-use gamemachine::context::DefaultContext;
-use gamestates::WinState;
-use gamestates::BoardState;
 use crate::assets::GameAssets;
 use crate::gamestates::PauseState;
-
+use gamemachine::context::DefaultContext;
+use gamemachine::runtime::Runtime;
+use gamestates::BoardState;
+use gamestates::WinState;
+use std::rc::Rc;
 
 fn main() -> Result<(), String> {
     let sdl_cxt = sdl2::init()?;

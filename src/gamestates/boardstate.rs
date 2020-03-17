@@ -1,19 +1,19 @@
 extern crate sdl2;
 
-use crate::gamemachine::state::GameStateTrait;
 use crate::gamemachine::runtime_signal::RuntimeSignal;
+use crate::gamemachine::state::GameStateTrait;
 
-use sdl2::rect;
+use crate::assets::GameAssets;
+use crate::game_events::WinColorEvent;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
+use sdl2::rect;
 use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
-use sdl2::mouse::MouseButton;
 use std::borrow::BorrowMut;
-use crate::assets::GameAssets;
-use crate::game_events::WinColorEvent;
 
 const BOARD_LENGTH: usize = 8;
 const BOARD_SIZE: usize = BOARD_LENGTH * BOARD_LENGTH;
@@ -22,7 +22,7 @@ const CHECKER_PADDING: usize = 20;
 const OUTER_PADDING: usize = 20; // padding from the left most top corner of the screen
 
 trait RectExtras {
-    fn clear(& mut self);
+    fn clear(&mut self);
     fn move_to(&mut self, rect: &rect::Rect);
 }
 
@@ -42,14 +42,14 @@ impl RectExtras for rect::Rect {
 
 struct Score {
     green: usize,
-    red: usize
+    red: usize,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Checker {
-    GREEN ( usize ), // sdl2 rect index
-    RED ( usize ),
-    NONE
+    GREEN(usize), // sdl2 rect index
+    RED(usize),
+    NONE,
 }
 
 struct RenderRectangles {
@@ -57,7 +57,7 @@ struct RenderRectangles {
     black_tiles: [rect::Rect; BOARD_SIZE / 2],
     green_rectangles: [rect::Rect; BOARD_SIZE / 4],
     red_rectangles: [rect::Rect; BOARD_SIZE / 4],
-    indicator: rect::Rect
+    indicator: rect::Rect,
 }
 
 pub struct BoardState {
@@ -70,7 +70,7 @@ pub struct BoardState {
     mouse_point: Point,
     source_index: Option<usize>,
     target_index: Option<usize>,
-    playing_color: Checker
+    playing_color: Checker,
 }
 
 impl BoardState {
@@ -82,26 +82,23 @@ impl BoardState {
                 black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
                 green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
                 red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
-                indicator: rect::Rect::new(0, 0, 0, 0)
+                indicator: rect::Rect::new(0, 0, 0, 0),
             },
             green_length: 0,
             red_length: 0,
-            score: Score {
-                green: 0,
-                red: 0
-            },
-            mouse_point: Point::new(0,0),
+            score: Score { green: 0, red: 0 },
+            mouse_point: Point::new(0, 0),
             source_index: None,
             target_index: None,
             cell_mapping: [Checker::NONE; BOARD_SIZE],
-            playing_color: Checker::GREEN(0)
+            playing_color: Checker::GREEN(0),
         }
     }
 
     fn switch_turn(&mut self) {
         match self.playing_color {
-            Checker::RED (sdl_rect) => self.playing_color = Checker::GREEN (sdl_rect),
-            Checker::GREEN (sdl_rect) => self.playing_color = Checker::RED (sdl_rect),
+            Checker::RED(sdl_rect) => self.playing_color = Checker::GREEN(sdl_rect),
+            Checker::GREEN(sdl_rect) => self.playing_color = Checker::RED(sdl_rect),
             Checker::NONE => {}
         }
     }
@@ -110,18 +107,17 @@ impl BoardState {
         for i in 0..self.renderings.board_tiles.len() {
             let rect = &self.renderings.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
-
                 match &self.cell_mapping[i] {
-                    Checker::RED { .. }  => {
+                    Checker::RED { .. } => {
                         if let Checker::RED { .. } = &self.playing_color {
                             return Some(i);
                         }
-                    },
+                    }
                     Checker::GREEN { .. } => {
                         if let Checker::GREEN { .. } = &self.playing_color {
                             return Some(i);
                         }
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -146,26 +142,30 @@ impl BoardState {
                 rct.move_to(&self.renderings.board_tiles[target]);
 
                 self.cell_mapping[target] = Checker::RED(sdl_rect);
-            },
+            }
             Checker::GREEN(sdl_rect) => {
                 let rct = &mut self.renderings.green_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
                 self.cell_mapping[target] = Checker::GREEN(sdl_rect);
-            },
+            }
             Checker::NONE => {}
         }
         self.cell_mapping[source] = Checker::NONE;
     }
 
-    fn overtake(&mut self, source : usize, victim: usize, end: usize) {
+    fn overtake(&mut self, source: usize, victim: usize, end: usize) {
         match self.cell_mapping[victim] {
             Checker::GREEN(sdl_rect) => {
-                self.renderings.green_rectangles[sdl_rect].borrow_mut().clear();
+                self.renderings.green_rectangles[sdl_rect]
+                    .borrow_mut()
+                    .clear();
                 self.score.green -= 1;
-            },
+            }
             Checker::RED(sdl_rect) => {
-                self.renderings.red_rectangles[sdl_rect].borrow_mut().clear();
+                self.renderings.red_rectangles[sdl_rect]
+                    .borrow_mut()
+                    .clear();
                 self.score.red -= 1;
             }
             _ => {}
@@ -176,21 +176,21 @@ impl BoardState {
 
     fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
         let is_enemy = match &self.cell_mapping[source] {
-            Checker::RED {..} => {
-                if let Checker::GREEN {..} = &self.cell_mapping[victim] {
-                    true
-                } else {
-                    false
-                }
-            },
-            Checker::GREEN {..} => {
-                if let Checker::RED {..} = &self.cell_mapping[victim] {
+            Checker::RED { .. } => {
+                if let Checker::GREEN { .. } = &self.cell_mapping[victim] {
                     true
                 } else {
                     false
                 }
             }
-            _ => { false }
+            Checker::GREEN { .. } => {
+                if let Checker::RED { .. } = &self.cell_mapping[victim] {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
         };
 
         let is_next_empty = self.cell_mapping[end as usize] == Checker::NONE;
@@ -225,7 +225,11 @@ impl BoardState {
         let next_lower = BoardState::row_down(source_pos, left_right_steps);
 
         if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_lower) {
-            let x_steps = if is_right { left_right_steps } else { -left_right_steps };
+            let x_steps = if is_right {
+                left_right_steps
+            } else {
+                -left_right_steps
+            };
             self.try_to_overtake(source_pos, target_pos, next_lower + x_steps);
         }
     }
@@ -235,20 +239,26 @@ impl BoardState {
         let next_upper = BoardState::row_up(source_pos, left_right_steps);
 
         if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_upper) {
-            let x_steps = if is_right { left_right_steps } else { -left_right_steps };
+            let x_steps = if is_right {
+                left_right_steps
+            } else {
+                -left_right_steps
+            };
             self.try_to_overtake(source_pos, target_pos, next_upper + x_steps);
         }
     }
 
-    fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize,  i: i32) {
+    fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
         let lower = BoardState::row_down(source_pos, i);
         let upper = BoardState::row_up(source_pos, i);
 
         if !BoardState::on_right_edge(source_pos) {
             if BoardState::is_in_bounds(lower) {
                 let right_lower = lower + i;
-                if self.cell_mapping[target_pos] == Checker::NONE && right_lower == target_pos as i32 {
-                    self.move_to_empty(source_pos,target_pos);
+                if self.cell_mapping[target_pos] == Checker::NONE
+                    && right_lower == target_pos as i32
+                {
+                    self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
                 } else if right_lower == target_pos as i32 {
                     self.check_next_down(source_pos, target_pos, true);
@@ -256,8 +266,10 @@ impl BoardState {
             }
             if BoardState::is_in_bounds(upper) {
                 let right_upper = upper + i;
-                if self.cell_mapping[target_pos] == Checker::NONE && right_upper == target_pos as i32 {
-                    self.move_to_empty(source_pos,target_pos);
+                if self.cell_mapping[target_pos] == Checker::NONE
+                    && right_upper == target_pos as i32
+                {
+                    self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
                 } else if right_upper == target_pos as i32 {
                     self.check_next_up(source_pos, target_pos, true);
@@ -268,7 +280,8 @@ impl BoardState {
         if !BoardState::on_left_edge(source_pos) {
             if BoardState::is_in_bounds(lower) {
                 let left_lower = lower - i;
-                if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32 {
+                if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32
+                {
                     self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
                 } else if left_lower == target_pos as i32 {
@@ -277,7 +290,8 @@ impl BoardState {
             }
             if BoardState::is_in_bounds(upper) {
                 let left_upper = upper - i;
-                if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32 {
+                if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32
+                {
                     self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
                 } else if left_upper == target_pos as i32 {
@@ -291,7 +305,6 @@ impl BoardState {
 impl GameStateTrait for BoardState {
     fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
         if self.score.red <= 0 || self.score.green <= 0 {
-
             if self.score.red <= 0 {
                 event.push_custom_event(WinColorEvent::new_green()).unwrap();
             } else {
@@ -300,7 +313,6 @@ impl GameStateTrait for BoardState {
 
             RuntimeSignal::GotoState(1)
         } else {
-
             if self.source_index != None && self.target_index != None {
                 self.scan_neighbourhood(self.source_index.unwrap(), self.target_index.unwrap(), 1);
 
@@ -312,7 +324,7 @@ impl GameStateTrait for BoardState {
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
-        canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
+        canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         canvas.clear();
 
         canvas.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
@@ -323,7 +335,7 @@ impl GameStateTrait for BoardState {
             Some(i) => {
                 canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
                 canvas.fill_rect(self.renderings.board_tiles[i])?;
-            },
+            }
             None => {}
         };
 
@@ -334,12 +346,12 @@ impl GameStateTrait for BoardState {
         canvas.fill_rects(&self.renderings.red_rectangles)?;
 
         match self.playing_color {
-            Checker::RED(..)  => {
+            Checker::RED(..) => {
                 canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
-            },
+            }
             Checker::GREEN(..) => {
                 canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
-            },
+            }
             Checker::NONE => {}
         };
 
@@ -351,22 +363,30 @@ impl GameStateTrait for BoardState {
 
     fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
         match event {
-            Event::Quit {..} => return RuntimeSignal::Quit,
-            Event::KeyDown {keycode: Some(Keycode::Escape), ..} => RuntimeSignal::GotoState(2),
-            Event::MouseButtonDown {x, y, mouse_btn: MouseButton::Left, ..} => {
+            Event::Quit { .. } => return RuntimeSignal::Quit,
+            Event::KeyDown {
+                keycode: Some(Keycode::Escape),
+                ..
+            } => RuntimeSignal::GotoState(2),
+            Event::MouseButtonDown {
+                x,
+                y,
+                mouse_btn: MouseButton::Left,
+                ..
+            } => {
                 self.mouse_point.x = *x;
                 self.mouse_point.y = *y;
                 match self.source_index {
-                  None => {
-                      self.source_index = self.find_source_checker_rect();
-                  },
-                  Some(_) => {
-                      self.target_index = self.find_target_rect();
-                  },
+                    None => {
+                        self.source_index = self.find_source_checker_rect();
+                    }
+                    Some(_) => {
+                        self.target_index = self.find_target_rect();
+                    }
                 };
                 RuntimeSignal::Continue
-            },
-            _ => RuntimeSignal::Continue
+            }
+            _ => RuntimeSignal::Continue,
         }
     }
 
@@ -432,4 +452,3 @@ impl GameStateTrait for BoardState {
         self.is_loaded
     }
 }
-

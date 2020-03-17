@@ -1,18 +1,17 @@
-
-use crate::gamemachine::state::GameStateTrait;
 use crate::gamemachine::context::Context;
 use crate::gamemachine::runtime_signal::RuntimeSignal;
+use crate::gamemachine::state::GameStateTrait;
 
-use std::rc::Rc;
+use crate::assets::GameAssets;
 use crate::gamemachine::clock::Clock;
 use sdl2::EventPump;
 use sdl2::EventSubsystem;
-use crate::assets::GameAssets;
+use std::rc::Rc;
 
 pub struct Runtime {
     should_run: bool,
     states: Vec<Rc<dyn GameStateTrait>>,
-    current_index: usize
+    current_index: usize,
 }
 
 impl Runtime {
@@ -20,7 +19,7 @@ impl Runtime {
         Runtime {
             should_run: true,
             current_index: 0,
-            states: vec![]
+            states: vec![],
         }
     }
 
@@ -55,10 +54,10 @@ impl Runtime {
             match state.handle_event(&event) {
                 RuntimeSignal::Quit => {
                     return RuntimeSignal::Quit;
-                },
+                }
                 RuntimeSignal::GotoState(state_index) => {
                     return RuntimeSignal::GotoState(state_index);
-                },
+                }
                 _ => {}
             }
         }
@@ -75,10 +74,16 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn run<T>(&mut self, mut context: T, ass: &GameAssets, event_sys: &EventSubsystem) -> Result<(), String> where T: Context {
-
+    pub fn run<T>(
+        &mut self,
+        mut context: T,
+        ass: &GameAssets,
+        event_sys: &EventSubsystem,
+    ) -> Result<(), String>
+    where
+        T: Context,
+    {
         'running: while !self.states.is_empty() {
-
             self.handle_setup(ass)?;
 
             'gameloop: loop {
@@ -89,22 +94,22 @@ impl Runtime {
                 match self.handle_events(context.event_pump()) {
                     RuntimeSignal::Quit => {
                         break 'running;
-                    },
-                    RuntimeSignal::GotoState(i) =>  {
+                    }
+                    RuntimeSignal::GotoState(i) => {
                         self.current_index = i;
                         break 'gameloop;
-                    },
+                    }
                     _ => {}
                 }
 
                 match self.handle_update(context.clock(), event_sys) {
                     RuntimeSignal::Quit => {
                         break 'running;
-                    },
-                    RuntimeSignal::GotoState(i) =>  {
+                    }
+                    RuntimeSignal::GotoState(i) => {
                         self.current_index = i;
                         break 'gameloop;
-                    },
+                    }
                     _ => {}
                 }
 
