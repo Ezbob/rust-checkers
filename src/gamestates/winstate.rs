@@ -37,7 +37,6 @@ impl<'a> GameStateTrait for WinState<'a> {
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
-        canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
         canvas.clear();
 
         let texture_creator = canvas.texture_creator();

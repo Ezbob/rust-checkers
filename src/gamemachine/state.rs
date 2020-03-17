@@ -15,4 +15,3 @@ pub trait GameStateTrait {
     fn setup(&mut self, ass: &GameAssets) -> Result<(), String>;
     fn is_set_up(&self) -> bool;
 }
-

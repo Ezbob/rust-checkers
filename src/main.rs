@@ -1,6 +1,8 @@
 extern crate sdl2;
 
+#[macro_use]
 mod gamestates;
+
 mod gamemachine;
 mod assets;
 mod game_events;
@@ -11,6 +13,7 @@ use gamemachine::context::DefaultContext;
 use gamestates::WinState;
 use gamestates::BoardState;
 use crate::assets::GameAssets;
+use crate::gamestates::PauseState;
 
 
 fn main() -> Result<(), String> {
@@ -25,8 +28,7 @@ fn main() -> Result<(), String> {
 
     let assets = GameAssets::new(&mut ttf);
 
-    runtime.add_state(Rc::new(BoardState::new()));
-    runtime.add_state(Rc::new(WinState::new()));
+    initialize_states!(runtime);
 
     runtime.run(context, &assets, &sdl_event)
 }

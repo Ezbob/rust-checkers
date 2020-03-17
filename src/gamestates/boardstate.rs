@@ -312,11 +312,10 @@ impl GameStateTrait for BoardState {
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
+        canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
         canvas.clear();
-        canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
-        canvas.fill_rect(canvas.viewport())?;
-        canvas.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
 
+        canvas.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
         canvas.draw_rects(&self.renderings.board_tiles)?;
         canvas.fill_rects(&self.renderings.black_tiles)?;
 
@@ -352,7 +351,8 @@ impl GameStateTrait for BoardState {
 
     fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
         match event {
-            Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => RuntimeSignal::Quit,
+            Event::Quit {..} => return RuntimeSignal::Quit,
+            Event::KeyDown {keycode: Some(Keycode::Escape), ..} => RuntimeSignal::GotoState(2),
             Event::MouseButtonDown {x, y, mouse_btn: MouseButton::Left, ..} => {
                 self.mouse_point.x = *x;
                 self.mouse_point.y = *y;
