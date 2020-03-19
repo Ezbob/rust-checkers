@@ -1,4 +1,4 @@
-use crate::gamemachine::clock::Clock;
+use crate::game_machine::clock::Clock;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::EventPump;

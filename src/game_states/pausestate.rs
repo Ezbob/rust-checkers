@@ -1,6 +1,6 @@
 use crate::assets::GameAssets;
-use crate::gamemachine::runtime_signal::RuntimeSignal;
-use crate::gamemachine::state::GameStateTrait;
+use crate::game_machine::runtime_signal::RuntimeSignal;
+use crate::game_machine::state::GameStateTrait;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;

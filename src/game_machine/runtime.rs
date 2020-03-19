@@ -1,9 +1,9 @@
-use crate::gamemachine::context::Context;
-use crate::gamemachine::runtime_signal::RuntimeSignal;
-use crate::gamemachine::state::GameStateTrait;
+use crate::game_machine::context::Context;
+use crate::game_machine::runtime_signal::RuntimeSignal;
+use crate::game_machine::state::GameStateTrait;
 
 use crate::assets::GameAssets;
-use crate::gamemachine::clock::Clock;
+use crate::game_machine::clock::Clock;
 use sdl2::EventPump;
 use sdl2::EventSubsystem;
 use std::rc::Rc;
