@@ -12,14 +12,14 @@ use sdl2::EventSubsystem;
 
 pub struct PauseState<'a> {
     is_setup: bool,
-    pause_text: Option<Surface<'a>>,
+    pause_surf: Option<Surface<'a>>,
 }
 
 impl<'a> PauseState<'a> {
     pub fn new() -> PauseState<'a> {
         PauseState {
             is_setup: false,
-            pause_text: None,
+            pause_surf: None,
         }
     }
 }
@@ -33,9 +33,11 @@ impl<'a> GameStateTrait for PauseState<'a> {
         canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         canvas.clear();
 
-        if let Some(surf) = &self.pause_text {
-            let text_creator = canvas.texture_creator();
-            let text = text_creator
+        if let Some(surf) = &self.pause_surf {
+
+            let texture_creator = canvas.texture_creator();
+
+            let text = texture_creator
                 .create_texture_from_surface(surf)
                 .map_err(|e| e.to_string())?;
 
@@ -45,6 +47,7 @@ impl<'a> GameStateTrait for PauseState<'a> {
 
             let x = center.x() - (width / 2) as i32;
             let y = center.y() - (height / 2) as i32;
+
 
             canvas.copy(&text, None, Some(Rect::new(x, y, width, height)))?;
         }
@@ -65,12 +68,15 @@ impl<'a> GameStateTrait for PauseState<'a> {
     }
 
     fn setup(&mut self, ass: &GameAssets<'_>) -> Result<(), String> {
+
+
         let surf = ass
             .font_vt323_big
             .render("Game paused. Press Escape to resume")
             .solid(Color::RGB(0, 0, 0xaf))
             .map_err(|e| e.to_string())?;
-        self.pause_text = Some(surf);
+        self.pause_surf = Some(surf);
+
         Ok(())
     }
 

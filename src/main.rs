@@ -1,6 +1,5 @@
 extern crate sdl2;
 
-#[macro_use]
 mod gamestates;
 
 mod assets;
@@ -22,12 +21,14 @@ fn main() -> Result<(), String> {
 
     sdl_event.register_custom_event::<game_events::WinColorEvent>()?;
 
+    let assets= GameAssets::new(&mut ttf);
     let mut runtime = Runtime::new();
-    let context = DefaultContext::new(&sdl_cxt)?;
+    let mut context = DefaultContext::new(&sdl_cxt)?;
 
-    let assets = GameAssets::new(&mut ttf);
 
-    initialize_states!(runtime);
+    runtime.add_state(Rc::new(BoardState::new() ) );
+    runtime.add_state( Rc::new(WinState::new() ) );
+    runtime.add_state( Rc::new(PauseState::new() ) );
 
-    runtime.run(context, &assets, &sdl_event)
+    runtime.run(&mut context, &assets, &sdl_event)
 }

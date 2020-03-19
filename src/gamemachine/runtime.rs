@@ -74,14 +74,12 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn run<T>(
+    pub fn run(
         &mut self,
-        mut context: T,
+        context: &mut dyn Context,
         ass: &GameAssets,
         event_sys: &EventSubsystem,
     ) -> Result<(), String>
-    where
-        T: Context,
     {
         'running: while !self.states.is_empty() {
             self.handle_setup(ass)?;

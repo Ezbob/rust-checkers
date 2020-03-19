@@ -73,6 +73,26 @@ pub struct BoardState {
     playing_color: Checker,
 }
 
+fn is_in_bounds(pos: i32) -> bool {
+    pos >= 0 && pos < BOARD_SIZE as i32
+}
+
+fn on_left_edge(pos: usize) -> bool {
+    (pos as i32) % BOARD_LENGTH as i32 == 0
+}
+
+fn on_right_edge(pos: usize) -> bool {
+    ((pos as i32) + 1) % BOARD_LENGTH as i32 == 0
+}
+
+fn row_up(pos: usize, n: i32) -> i32 {
+    (pos as i32) - (n * BOARD_LENGTH as i32)
+}
+
+fn row_down(pos: usize, n: i32) -> i32 {
+    (pos as i32) + (n * BOARD_LENGTH as i32)
+}
+
 impl BoardState {
     pub fn new() -> BoardState {
         BoardState {
@@ -200,31 +220,13 @@ impl BoardState {
         }
     }
 
-    fn row_up(pos: usize, n: i32) -> i32 {
-        (pos as i32) - (n * BOARD_LENGTH as i32)
-    }
 
-    fn row_down(pos: usize, n: i32) -> i32 {
-        (pos as i32) + (n * BOARD_LENGTH as i32)
-    }
-
-    fn on_left_edge(pos: usize) -> bool {
-        (pos as i32) % BOARD_LENGTH as i32 == 0
-    }
-
-    fn on_right_edge(pos: usize) -> bool {
-        ((pos as i32) + 1) % BOARD_LENGTH as i32 == 0
-    }
-
-    fn is_in_bounds(pos: i32) -> bool {
-        pos >= 0 && pos < BOARD_SIZE as i32
-    }
 
     fn check_next_down(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
         let left_right_steps = 2;
-        let next_lower = BoardState::row_down(source_pos, left_right_steps);
+        let next_lower = row_down(source_pos, left_right_steps);
 
-        if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_lower) {
+        if !on_right_edge(target_pos) && is_in_bounds(next_lower) {
             let x_steps = if is_right {
                 left_right_steps
             } else {
@@ -236,9 +238,9 @@ impl BoardState {
 
     fn check_next_up(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
         let left_right_steps = 2;
-        let next_upper = BoardState::row_up(source_pos, left_right_steps);
+        let next_upper = row_up(source_pos, left_right_steps);
 
-        if !BoardState::on_right_edge(target_pos) && BoardState::is_in_bounds(next_upper) {
+        if !on_right_edge(target_pos) && is_in_bounds(next_upper) {
             let x_steps = if is_right {
                 left_right_steps
             } else {
@@ -249,11 +251,11 @@ impl BoardState {
     }
 
     fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let lower = BoardState::row_down(source_pos, i);
-        let upper = BoardState::row_up(source_pos, i);
+        let lower = row_down(source_pos, i);
+        let upper = row_up(source_pos, i);
 
-        if !BoardState::on_right_edge(source_pos) {
-            if BoardState::is_in_bounds(lower) {
+        if !on_right_edge(source_pos) {
+            if is_in_bounds(lower) {
                 let right_lower = lower + i;
                 if self.cell_mapping[target_pos] == Checker::NONE
                     && right_lower == target_pos as i32
@@ -264,7 +266,7 @@ impl BoardState {
                     self.check_next_down(source_pos, target_pos, true);
                 }
             }
-            if BoardState::is_in_bounds(upper) {
+            if is_in_bounds(upper) {
                 let right_upper = upper + i;
                 if self.cell_mapping[target_pos] == Checker::NONE
                     && right_upper == target_pos as i32
@@ -277,8 +279,8 @@ impl BoardState {
             }
         }
 
-        if !BoardState::on_left_edge(source_pos) {
-            if BoardState::is_in_bounds(lower) {
+        if !on_left_edge(source_pos) {
+            if is_in_bounds(lower) {
                 let left_lower = lower - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32
                 {
@@ -288,7 +290,7 @@ impl BoardState {
                     self.check_next_down(source_pos, target_pos, false);
                 }
             }
-            if BoardState::is_in_bounds(upper) {
+            if is_in_bounds(upper) {
                 let left_upper = upper - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32
                 {
