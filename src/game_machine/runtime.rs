@@ -2,20 +2,19 @@ use crate::game_machine::context::Context;
 use crate::game_machine::runtime_signal::RuntimeSignal;
 use crate::game_machine::state::GameStateTrait;
 
-use crate::assets::GameAssets;
+use crate::asset_loader::Assets;
 use crate::game_machine::clock::Clock;
 use sdl2::EventPump;
 use sdl2::EventSubsystem;
-use std::rc::Rc;
 
-pub struct Runtime {
+pub struct Runtime<'state> {
     should_run: bool,
-    states: Vec<Rc<dyn GameStateTrait>>,
+    states: Vec<&'state mut dyn GameStateTrait>,
     current_index: usize,
 }
 
-impl Runtime {
-    pub fn new() -> Runtime {
+impl<'state> Runtime<'state> {
+    pub fn new() -> Runtime<'state> {
         Runtime {
             should_run: true,
             current_index: 0,
@@ -23,16 +22,13 @@ impl Runtime {
         }
     }
 
-    pub fn add_state(&mut self, state: Rc<dyn GameStateTrait>) {
+    pub fn add_state(&mut self, state: &'state mut dyn GameStateTrait) {
         self.states.push(state);
     }
 
     fn current_state_mut(&mut self) -> &mut dyn GameStateTrait {
-        Rc::get_mut(&mut self.states[self.current_index]).unwrap()
-    }
-
-    fn current_state(&self) -> &dyn GameStateTrait {
-        self.states[self.current_index].as_ref()
+        let current_index = self.current_index;
+        *self.states.get_mut(current_index).unwrap()
     }
 
     fn handle_update(&mut self, clock: &mut Clock, events: &EventSubsystem) -> RuntimeSignal {
@@ -64,7 +60,7 @@ impl Runtime {
         RuntimeSignal::Continue
     }
 
-    fn handle_setup(&mut self, ass: &GameAssets) -> Result<(), String> {
+    fn handle_setup(&mut self, ass: &Assets) -> Result<(), String> {
         let state = self.current_state_mut();
 
         if !state.is_set_up() {
@@ -77,7 +73,7 @@ impl Runtime {
     pub fn run(
         &mut self,
         context: &mut dyn Context,
-        ass: &GameAssets,
+        ass: &Assets,
         event_sys: &EventSubsystem,
     ) -> Result<(), String>
     {
@@ -111,7 +107,7 @@ impl Runtime {
                     _ => {}
                 }
 
-                self.current_state().render(context.canvas())?;
+                self.current_state_mut().render(context.canvas())?;
 
                 context.clock().tick();
             }

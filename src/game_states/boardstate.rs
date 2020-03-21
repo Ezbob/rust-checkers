@@ -3,7 +3,7 @@ extern crate sdl2;
 use crate::game_machine::runtime_signal::RuntimeSignal;
 use crate::game_machine::state::GameStateTrait;
 
-use crate::assets::GameAssets;
+use crate::asset_loader::Assets;
 use crate::game_events::WinColorEvent;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -392,7 +392,7 @@ impl GameStateTrait for BoardState {
         }
     }
 
-    fn setup(&mut self, _ass: &GameAssets) -> Result<(), String> {
+    fn setup(&mut self, _ass: &Assets) -> Result<(), String> {
         let mut tile_index = 0;
 
         {

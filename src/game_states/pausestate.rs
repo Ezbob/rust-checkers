@@ -1,30 +1,31 @@
-use crate::assets::GameAssets;
+use crate::asset_loader::{Assets, TextureManager};
 use crate::game_machine::runtime_signal::RuntimeSignal;
 use crate::game_machine::state::GameStateTrait;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::render::{Canvas, TextureQuery};
-use sdl2::surface::Surface;
-use sdl2::video::Window;
+use sdl2::render::{Canvas, TextureQuery, TextureCreator};
+use sdl2::video::{Window, WindowContext};
 use sdl2::EventSubsystem;
 
-pub struct PauseState<'a> {
+const PAUSE_TEXT: usize = 0;
+
+pub struct PauseState<'ttf> {
     is_setup: bool,
-    pause_surf: Option<Surface<'a>>,
+    texture_manager: TextureManager<'ttf>
 }
 
-impl<'a> PauseState<'a> {
-    pub fn new() -> PauseState<'a> {
+impl<'ttf> PauseState<'ttf> {
+    pub fn new(texture_creator: &'ttf TextureCreator<WindowContext>) -> PauseState<'ttf> {
         PauseState {
             is_setup: false,
-            pause_surf: None,
+            texture_manager: TextureManager::new(texture_creator)
         }
     }
 }
 
-impl<'a> GameStateTrait for PauseState<'a> {
+impl<'ttf> GameStateTrait for PauseState<'ttf> {
     fn update(&mut self, _event: &EventSubsystem) -> RuntimeSignal {
         RuntimeSignal::Continue
     }
@@ -33,23 +34,16 @@ impl<'a> GameStateTrait for PauseState<'a> {
         canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         canvas.clear();
 
-        if let Some(surf) = &self.pause_surf {
+        if let Some(text_info) = self.texture_manager.get_texture(PAUSE_TEXT) {
 
-            let texture_creator = canvas.texture_creator();
-
-            let text = texture_creator
-                .create_texture_from_surface(surf)
-                .map_err(|e| e.to_string())?;
-
-            let TextureQuery { width, height, .. } = text.query();
+            let TextureQuery { width, height, .. } = text_info.get_texture_info_ref();
 
             let center = canvas.viewport().center();
 
             let x = center.x() - (width / 2) as i32;
             let y = center.y() - (height / 2) as i32;
-
-
-            canvas.copy(&text, None, Some(Rect::new(x, y, width, height)))?;
+            
+            canvas.copy(text_info.get_texture_ref(), None, Some(Rect::new(x, y, *width, *height)))?;
         }
 
         canvas.present();
@@ -67,16 +61,19 @@ impl<'a> GameStateTrait for PauseState<'a> {
         }
     }
 
-    fn setup(&mut self, ass: &GameAssets<'_>) -> Result<(), String> {
+    fn setup(&mut self, ass: &Assets<'_>) -> Result<(), String> {
 
+        let font = ass.font_collection.b612_regular[&30].font_ref();
 
-        let surf = ass
-            .font_vt323_big
-            .render("Game paused. Press Escape to resume")
-            .solid(Color::RGB(0, 0, 0xaf))
-            .map_err(|e| e.to_string())?;
-        self.pause_surf = Some(surf);
+        self.texture_manager.insert_surface_as_texture(
+            PAUSE_TEXT,
+            font
+                .render("Game paused. Press Escape to resume")
+                .blended(Color::RGB(0, 0, 0xaf))
+                .map_err(|e| e.to_string())?
+        );
 
+        self.is_setup = true;
         Ok(())
     }
 

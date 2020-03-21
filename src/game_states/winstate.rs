@@ -5,26 +5,27 @@ use crate::game_machine::state::GameStateTrait;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::render::{Canvas, TextureQuery};
-use sdl2::video::{Window};
+use sdl2::render::{Canvas, TextureQuery, TextureCreator};
+use sdl2::video::{Window, WindowContext};
 
-use crate::assets::GameAssets;
+use crate::asset_loader::{Assets, TextureManager};
 use crate::game_events::WinColorEvent;
 use sdl2::pixels::Color;
-use sdl2::surface::Surface;
+use sdl2::rect::Rect;
 
-pub struct WinState<'a> {
-    red_text: Option<Surface<'a>>,
-    green_text: Option<Surface<'a>>,
+const GREEN_TEXT_WIN: usize = 0;
+const RED_TEXT_WIN: usize = 1;
+
+pub struct WinState<'ttf> {
+    texture_manager: TextureManager<'ttf>,
     is_set_up: bool,
     is_green_win: bool,
 }
 
-impl<'a> WinState<'a> {
-    pub fn new() -> WinState<'a> {
+impl<'ttf> WinState<'ttf> {
+    pub fn new(text_creator: &'ttf TextureCreator<WindowContext>) -> WinState<'ttf> {
         WinState {
-            red_text: None,
-            green_text: None,
+            texture_manager: TextureManager::new(text_creator),
             is_set_up: false,
             is_green_win: false,
         }
@@ -40,37 +41,31 @@ impl<'a> GameStateTrait for WinState<'a> {
         canvas.set_draw_color(Color::RGB(0xff,0xff,0xff));
         canvas.clear();
 
-        let texture_creator = canvas.texture_creator();
-
         if self.is_green_win {
-            if let Some(surf) = &self.green_text {
-                let text = texture_creator
-                    .create_texture_from_surface(surf)
-                    .map_err(|e| e.to_string())?;
+            if let Some(t) = self.texture_manager.get_texture(GREEN_TEXT_WIN) {
+                let text = t.get_texture_ref();
 
                 let center = canvas.viewport().center();
-                let TextureQuery { width, height, .. } = text.query();
+                let TextureQuery { width, height, .. } = t.get_texture_info_ref();
 
-                let half_x = center.x() - (width as i32 / 2);
-                let half_y = center.y() - (height as i32 / 2);
+                let half_x = center.x() - (*width as i32 / 2);
+                let half_y = center.y() - (*height as i32 / 2);
 
-                let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height));
+                let dst = Some(Rect::new(half_x, half_y, *width, *height));
 
-                canvas.copy(&text, None, dst)?;
+                canvas.copy(text, None, dst)?;
             }
         } else {
-            if let Some(surf) = &self.red_text {
-                let text = texture_creator
-                    .create_texture_from_surface(surf)
-                    .map_err(|e| e.to_string())?;
+            if let Some(t) = self.texture_manager.get_texture(RED_TEXT_WIN) {
+                let text = t.get_texture_ref();
 
                 let center = canvas.viewport().center();
-                let TextureQuery { width, height, .. } = text.query();
+                let TextureQuery { width, height, .. } = t.get_texture_info_ref();
 
-                let half_x = center.x() - (width as i32 / 2);
-                let half_y = center.y() - (height as i32 / 2);
+                let half_x = center.x() - (*width as i32 / 2);
+                let half_y = center.y() - (*height as i32 / 2);
 
-                let dst = Some(sdl2::rect::Rect::new(half_x, half_y, width, height));
+                let dst = Some(Rect::new(half_x, half_y, *width, *height));
 
                 canvas.copy(&text, None, dst)?;
             }
@@ -102,19 +97,24 @@ impl<'a> GameStateTrait for WinState<'a> {
         RuntimeSignal::Continue
     }
 
-    fn setup(&mut self, ass: &GameAssets) -> Result<(), String> {
-        let redtext = ass
-            .font_vt323_big
-            .render("Red wins!")
-            .solid(Color::RGB(0xef, 0x0, 0x0))
-            .map_err(|e| e.to_string())?;
-        let greentext = ass
-            .font_vt323_big
-            .render("Green wins!")
-            .solid(Color::RGB(0x0, 0xef, 0x0))
-            .map_err(|e| e.to_string())?;
-        self.red_text = Some(redtext);
-        self.green_text = Some(greentext);
+    fn setup(&mut self, ass: &Assets) -> Result<(), String> {
+
+        let font = ass.font_collection.share_tech_mono_regular[&52].font_ref();
+
+        self.texture_manager.insert_surface_as_texture(
+            RED_TEXT_WIN,
+            font.render("Red wins!")
+                .blended(Color::RGB(0xef, 0x0, 0x0))
+                .map_err(|e| e.to_string())?
+        );
+
+        self.texture_manager.insert_surface_as_texture(
+            GREEN_TEXT_WIN,
+            font.render("Green wins!")
+                .blended(Color::RGB(0x0, 0xef, 0x0))
+                .map_err(|e| e.to_string())?
+        );
+
         self.is_set_up = true;
         Ok(())
     }
