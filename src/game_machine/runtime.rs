@@ -75,8 +75,7 @@ impl<'state> Runtime<'state> {
         context: &mut dyn Context,
         ass: &Assets,
         event_sys: &EventSubsystem,
-    ) -> Result<(), String>
-    {
+    ) -> Result<(), String> {
         'running: while !self.states.is_empty() {
             self.handle_setup(ass)?;
 

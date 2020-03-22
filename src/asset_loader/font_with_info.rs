@@ -1,4 +1,4 @@
-use sdl2::ttf::{Sdl2TtfContext, Font};
+use sdl2::ttf::{Font, Sdl2TtfContext};
 use std::path::Path;
 
 pub struct FontWithInfo<'ttf> {

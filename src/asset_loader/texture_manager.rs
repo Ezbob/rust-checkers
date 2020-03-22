@@ -1,8 +1,8 @@
+use crate::asset_loader::texture_with_info::TextureWithInfo;
 use sdl2::render::TextureCreator;
+use sdl2::surface::Surface;
 use sdl2::video::WindowContext;
 use std::collections::HashMap;
-use sdl2::surface::Surface;
-use crate::asset_loader::texture_with_info::TextureWithInfo;
 
 pub struct TextureManager<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
@@ -17,9 +17,10 @@ impl<'a> TextureManager<'a> {
         }
     }
 
-    pub fn insert_surface_as_texture(&mut self, i: usize, surf: Surface) {
+    pub fn insert_surface_as_texture(&mut self, i: usize, surf: Surface) -> Result<(), String> {
         self.cache
-            .insert(i, TextureWithInfo::new_from(&self.texture_creator, &surf));
+            .insert(i, TextureWithInfo::new_from(&self.texture_creator, &surf)?);
+        Ok(())
     }
 
     pub fn get_texture(&self, i: usize) -> Option<&TextureWithInfo<'a>> {

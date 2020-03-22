@@ -1,4 +1,3 @@
-
 mod assets;
 mod font_collection;
 mod font_with_info;

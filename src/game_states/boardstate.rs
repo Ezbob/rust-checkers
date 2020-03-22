@@ -220,8 +220,6 @@ impl BoardState {
         }
     }
 
-
-
     fn check_next_down(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
         let left_right_steps = 2;
         let next_lower = row_down(source_pos, left_right_steps);
