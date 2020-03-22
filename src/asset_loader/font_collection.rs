@@ -24,7 +24,7 @@ impl<'ttf> FontCollection<'ttf> {
         let vt_path = PathBuf::from("assets/VT323/VT323-Regular.ttf");
 
         Ok(FontCollection {
-            b612_regular: font_sizes_map!(ttf, &b_path, 18, 30, 42),
+            b612_regular: font_sizes_map!(ttf, &b_path, 12, 18, 30, 42),
             vt323_regular: font_sizes_map!(ttf, &vt_path, 18, 24, 30, 52),
             share_tech_mono_regular: font_sizes_map!(ttf, &stm_path, 14, 30, 52),
         })

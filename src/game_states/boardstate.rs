@@ -3,7 +3,7 @@ extern crate sdl2;
 use crate::game_machine::runtime_signal::RuntimeSignal;
 use crate::game_machine::state::GameStateTrait;
 
-use crate::asset_loader::Assets;
+use crate::asset_loader::{Assets, TextureManager};
 use crate::game_events::WinColorEvent;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -11,8 +11,8 @@ use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
 use sdl2::rect;
 use sdl2::rect::Point;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
+use sdl2::render::{Canvas, TextureCreator, TextureQuery};
+use sdl2::video::{Window, WindowContext};
 use std::borrow::BorrowMut;
 
 const BOARD_LENGTH: usize = 8;
@@ -58,10 +58,11 @@ struct RenderRectangles {
     green_rectangles: [rect::Rect; BOARD_SIZE / 4],
     red_rectangles: [rect::Rect; BOARD_SIZE / 4],
     indicator: rect::Rect,
+    debug_tile_text: [rect::Rect; BOARD_SIZE]
 }
 
-pub struct BoardState {
-    is_loaded: bool,
+pub struct BoardState<'ttf> {
+    is_set_up: bool,
     renderings: RenderRectangles,
     cell_mapping: [Checker; BOARD_SIZE],
     green_length: usize,
@@ -71,6 +72,7 @@ pub struct BoardState {
     source_index: Option<usize>,
     target_index: Option<usize>,
     playing_color: Checker,
+    texture_manager: TextureManager<'ttf>
 }
 
 fn is_in_bounds(pos: i32) -> bool {
@@ -93,16 +95,17 @@ fn row_down(pos: usize, n: i32) -> i32 {
     (pos as i32) + (n * BOARD_LENGTH as i32)
 }
 
-impl BoardState {
-    pub fn new() -> BoardState {
+impl<'ttf> BoardState<'ttf> {
+    pub fn new(t_creator: &'ttf TextureCreator<WindowContext>) -> BoardState<'ttf> {
         BoardState {
-            is_loaded: false,
+            is_set_up: false,
             renderings: RenderRectangles {
                 board_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE],
                 black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
                 green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
                 red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
                 indicator: rect::Rect::new(0, 0, 0, 0),
+                debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE]
             },
             green_length: 0,
             red_length: 0,
@@ -112,6 +115,7 @@ impl BoardState {
             target_index: None,
             cell_mapping: [Checker::NONE; BOARD_SIZE],
             playing_color: Checker::GREEN(0),
+            texture_manager: TextureManager::new(t_creator)
         }
     }
 
@@ -224,7 +228,7 @@ impl BoardState {
         let left_right_steps = 2;
         let next_lower = row_down(source_pos, left_right_steps);
 
-        if !on_right_edge(target_pos) && is_in_bounds(next_lower) {
+        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_lower) {
             let x_steps = if is_right {
                 left_right_steps
             } else {
@@ -238,7 +242,7 @@ impl BoardState {
         let left_right_steps = 2;
         let next_upper = row_up(source_pos, left_right_steps);
 
-        if !on_right_edge(target_pos) && is_in_bounds(next_upper) {
+        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_upper) {
             let x_steps = if is_right {
                 left_right_steps
             } else {
@@ -252,7 +256,7 @@ impl BoardState {
         let lower = row_down(source_pos, i);
         let upper = row_up(source_pos, i);
 
-        if !on_right_edge(source_pos) {
+        if !on_right_edge(source_pos) { // east-west boundary check
             if is_in_bounds(lower) {
                 let right_lower = lower + i;
                 if self.cell_mapping[target_pos] == Checker::NONE
@@ -277,7 +281,7 @@ impl BoardState {
             }
         }
 
-        if !on_left_edge(source_pos) {
+        if !on_left_edge(source_pos) { // east-west boundary check
             if is_in_bounds(lower) {
                 let left_lower = lower - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32
@@ -302,7 +306,7 @@ impl BoardState {
     }
 }
 
-impl GameStateTrait for BoardState {
+impl GameStateTrait for BoardState<'_> {
     fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
         if self.score.red <= 0 || self.score.green <= 0 {
             if self.score.red <= 0 {
@@ -327,9 +331,18 @@ impl GameStateTrait for BoardState {
         canvas.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         canvas.clear();
 
-        canvas.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.draw_rects(&self.renderings.board_tiles)?;
+        canvas.set_draw_color(Color::RGB(0x1f, 0x1f, 0x1f));
         canvas.fill_rects(&self.renderings.black_tiles)?;
+
+        for i in 0..BOARD_SIZE {
+            canvas.copy(
+                self.texture_manager.get_texture(i).unwrap().get_texture_ref(),
+                None,
+                self.renderings.debug_tile_text[i]
+            )?;
+        }
 
         match self.source_index {
             Some(i) => {
@@ -352,7 +365,9 @@ impl GameStateTrait for BoardState {
             Checker::GREEN(..) => {
                 canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
             }
-            Checker::NONE => {}
+            Checker::NONE => {
+                canvas.set_draw_color(Color::RGB(0xea, 0xea, 0xea));
+            }
         };
 
         canvas.fill_rect(self.renderings.indicator)?;
@@ -390,10 +405,11 @@ impl GameStateTrait for BoardState {
         }
     }
 
-    fn setup(&mut self, _ass: &Assets) -> Result<(), String> {
+    fn setup(&mut self, ass: &Assets) -> Result<(), String> {
         let mut tile_index = 0;
 
         {
+            // indicating which turn it current is
             let indicator = &mut self.renderings.indicator;
             let right = (CHECKER_PADDING * 3) as i32;
             let bottom = (CONTAINER_WIDTH * 8) as i32;
@@ -439,16 +455,33 @@ impl GameStateTrait for BoardState {
                 self.cell_mapping[flat_index] = Checker::RED(self.red_length);
                 self.red_length += 1;
             }
+
+            let font = ass.font_collection.b612_regular[&12].font_ref();
+            self.texture_manager.insert_surface_as_texture(flat_index,
+                font.render(format!("{}", flat_index).as_ref())
+                    .blended(Color::RGB(0x0,0x0,0xff))
+                    .map_err(|err| err.to_string())?
+            )?;
+
+            if let Some(text) = self.texture_manager.get_texture(flat_index) {
+                let TextureQuery {width, height, ..} = text.get_texture_info_ref();
+                if let Some(r) = self.renderings.debug_tile_text.get_mut(flat_index) {
+                    r.set_width(*width);
+                    r.set_height(*height);
+                    r.set_x(container.x() + 5);
+                    r.set_y(container.y() + 5);
+                }
+            }
         }
 
         self.score.red = self.red_length;
         self.score.green = self.green_length;
 
-        self.is_loaded = true;
+        self.is_set_up = true;
         Ok(())
     }
 
     fn is_set_up(&self) -> bool {
-        self.is_loaded
+        self.is_set_up
     }
 }

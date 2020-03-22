@@ -17,17 +17,17 @@ use game_states::WinState;
 fn main() -> Result<(), String> {
     let sdl_cxt = sdl2::init()?;
     let sdl_event = sdl_cxt.event()?;
-    let mut ttf = sdl2::ttf::init().map_err(|e| e.to_string())?;
+    let ttf = sdl2::ttf::init().map_err(|e| e.to_string())?;
 
     sdl_event.register_custom_event::<game_events::WinColorEvent>()?;
 
-    let assets = Assets::new(&mut ttf)?;
+    let assets = Assets::new(&ttf)?;
     let mut runtime = Runtime::new();
     let mut context = DefaultContext::new(&sdl_cxt)?;
 
     let text_creator = context.canvas().texture_creator();
 
-    let mut board_state = BoardState::new();
+    let mut board_state = BoardState::new(&text_creator);
     let mut win_state = WinState::new(&text_creator);
     let mut pause_state = PauseState::new(&text_creator);
 
