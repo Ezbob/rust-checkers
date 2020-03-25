@@ -58,7 +58,7 @@ struct RenderRectangles {
     green_rectangles: [rect::Rect; BOARD_SIZE / 4],
     red_rectangles: [rect::Rect; BOARD_SIZE / 4],
     indicator: rect::Rect,
-    debug_tile_text: [rect::Rect; BOARD_SIZE]
+    debug_tile_text: [rect::Rect; BOARD_SIZE],
 }
 
 pub struct BoardState<'ttf> {
@@ -72,7 +72,7 @@ pub struct BoardState<'ttf> {
     source_index: Option<usize>,
     target_index: Option<usize>,
     playing_color: Checker,
-    texture_manager: TextureManager<'ttf>
+    texture_manager: TextureManager<'ttf>,
 }
 
 fn is_in_bounds(pos: i32) -> bool {
@@ -105,7 +105,7 @@ impl<'ttf> BoardState<'ttf> {
                 green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
                 red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
                 indicator: rect::Rect::new(0, 0, 0, 0),
-                debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE]
+                debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
             },
             green_length: 0,
             red_length: 0,
@@ -115,7 +115,7 @@ impl<'ttf> BoardState<'ttf> {
             target_index: None,
             cell_mapping: [Checker::NONE; BOARD_SIZE],
             playing_color: Checker::GREEN(0),
-            texture_manager: TextureManager::new(t_creator)
+            texture_manager: TextureManager::new(t_creator),
         }
     }
 
@@ -256,7 +256,8 @@ impl<'ttf> BoardState<'ttf> {
         let lower = row_down(source_pos, i);
         let upper = row_up(source_pos, i);
 
-        if !on_right_edge(source_pos) { // east-west boundary check
+        if !on_right_edge(source_pos) {
+            // east-west boundary check
             if is_in_bounds(lower) {
                 let right_lower = lower + i;
                 if self.cell_mapping[target_pos] == Checker::NONE
@@ -281,7 +282,8 @@ impl<'ttf> BoardState<'ttf> {
             }
         }
 
-        if !on_left_edge(source_pos) { // east-west boundary check
+        if !on_left_edge(source_pos) {
+            // east-west boundary check
             if is_in_bounds(lower) {
                 let left_lower = lower - i;
                 if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32
@@ -338,9 +340,12 @@ impl GameStateTrait for BoardState<'_> {
 
         for i in 0..BOARD_SIZE {
             canvas.copy(
-                self.texture_manager.get_texture(i).unwrap().get_texture_ref(),
+                self.texture_manager
+                    .get_texture(i)
+                    .unwrap()
+                    .get_texture_ref(),
                 None,
-                self.renderings.debug_tile_text[i]
+                self.renderings.debug_tile_text[i],
             )?;
         }
 
@@ -456,15 +461,18 @@ impl GameStateTrait for BoardState<'_> {
                 self.red_length += 1;
             }
 
-            let font = ass.font_collection.b612_regular[&12].font_ref();
-            self.texture_manager.insert_surface_as_texture(flat_index,
-                font.render(format!("{}", flat_index).as_ref())
-                    .blended(Color::RGB(0x0,0x0,0xff))
-                    .map_err(|err| err.to_string())?
-            )?;
+            if let Some(font_with_info) = ass.font_collection.b612_regular.get(&12) {
+                let font = font_with_info.font_ref();
+                self.texture_manager.insert_surface_as_texture(
+                    flat_index,
+                    font.render(format!("{}", flat_index).as_ref())
+                        .blended(Color::RGB(0x08, 0xff, 0xff))
+                        .map_err(|err| err.to_string())?,
+                )?;
+            }
 
             if let Some(text) = self.texture_manager.get_texture(flat_index) {
-                let TextureQuery {width, height, ..} = text.get_texture_info_ref();
+                let TextureQuery { width, height, .. } = text.get_texture_info_ref();
                 if let Some(r) = self.renderings.debug_tile_text.get_mut(flat_index) {
                     r.set_width(*width);
                     r.set_height(*height);

@@ -8,17 +8,22 @@ use sdl2::EventPump;
 use sdl2::EventSubsystem;
 
 pub struct Runtime<'state> {
-    should_run: bool,
     states: Vec<&'state mut dyn GameStateTrait>,
+    assets: &'state Assets<'state>,
+    event_system: &'state EventSubsystem,
     current_index: usize,
 }
 
 impl<'state> Runtime<'state> {
-    pub fn new() -> Runtime<'state> {
+    pub fn new(
+        assets: &'state Assets<'state>,
+        event_system: &'state EventSubsystem,
+    ) -> Runtime<'state> {
         Runtime {
-            should_run: true,
             current_index: 0,
             states: vec![],
+            assets,
+            event_system,
         }
     }
 
@@ -26,42 +31,50 @@ impl<'state> Runtime<'state> {
         self.states.push(state);
     }
 
-    fn current_state_mut(&mut self) -> &mut dyn GameStateTrait {
+    fn current_state_mut(&mut self) -> Result<&mut dyn GameStateTrait, String> {
         let current_index = self.current_index;
-        *self.states.get_mut(current_index).unwrap()
+
+        return if let Some(state) = self.states.get_mut(current_index) {
+            Ok(*state)
+        } else {
+            Err(String::from(format!(
+                "No such state at index {}",
+                current_index
+            )))
+        };
     }
 
-    fn handle_update(&mut self, clock: &mut Clock, events: &EventSubsystem) -> RuntimeSignal {
+    fn handle_update(&mut self, clock: &mut Clock) -> Result<RuntimeSignal, String> {
+        let event_system = self.event_system;
         while clock.should_update() {
-            match self.current_state_mut().update(events) {
-                RuntimeSignal::GotoState(i) => return RuntimeSignal::GotoState(i),
-                RuntimeSignal::Quit => return RuntimeSignal::Quit,
+            match self.current_state_mut()?.update(event_system) {
+                RuntimeSignal::GotoState(i) => return Ok(RuntimeSignal::GotoState(i)),
+                RuntimeSignal::Quit => return Ok(RuntimeSignal::Quit),
                 _ => {}
             }
             clock.lag_update();
         }
-        RuntimeSignal::Continue
+        Ok(RuntimeSignal::Continue)
     }
 
-    fn handle_events(&mut self, event_pump: &mut EventPump) -> RuntimeSignal {
-        let state = self.current_state_mut();
-
+    fn handle_events(&mut self, event_pump: &mut EventPump) -> Result<RuntimeSignal, String> {
         for event in event_pump.poll_iter() {
-            match state.handle_event(&event) {
+            match self.current_state_mut()?.handle_event(&event) {
                 RuntimeSignal::Quit => {
-                    return RuntimeSignal::Quit;
+                    return Ok(RuntimeSignal::Quit);
                 }
                 RuntimeSignal::GotoState(state_index) => {
-                    return RuntimeSignal::GotoState(state_index);
+                    return Ok(RuntimeSignal::GotoState(state_index));
                 }
                 _ => {}
             }
         }
-        RuntimeSignal::Continue
+        Ok(RuntimeSignal::Continue)
     }
 
-    fn handle_setup(&mut self, ass: &Assets) -> Result<(), String> {
-        let state = self.current_state_mut();
+    fn handle_setup(&mut self) -> Result<(), String> {
+        let ass = self.assets;
+        let state = self.current_state_mut()?;
 
         if !state.is_set_up() {
             state.setup(ass)?;
@@ -70,21 +83,12 @@ impl<'state> Runtime<'state> {
         Ok(())
     }
 
-    pub fn run(
-        &mut self,
-        context: &mut dyn Context,
-        ass: &Assets,
-        event_sys: &EventSubsystem,
-    ) -> Result<(), String> {
+    pub fn run(&mut self, context: &mut dyn Context) -> Result<(), String> {
         'running: while !self.states.is_empty() {
-            self.handle_setup(ass)?;
+            self.handle_setup()?;
 
             'gameloop: loop {
-                if !self.should_run {
-                    break 'running;
-                }
-
-                match self.handle_events(context.event_pump()) {
+                match self.handle_events(context.event_pump())? {
                     RuntimeSignal::Quit => {
                         break 'running;
                     }
@@ -95,7 +99,7 @@ impl<'state> Runtime<'state> {
                     _ => {}
                 }
 
-                match self.handle_update(context.clock(), event_sys) {
+                match self.handle_update(context.clock())? {
                     RuntimeSignal::Quit => {
                         break 'running;
                     }
@@ -106,7 +110,7 @@ impl<'state> Runtime<'state> {
                     _ => {}
                 }
 
-                self.current_state_mut().render(context.canvas())?;
+                self.current_state_mut()?.render(context.canvas())?;
 
                 context.clock().tick();
             }

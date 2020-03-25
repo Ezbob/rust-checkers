@@ -22,7 +22,7 @@ fn main() -> Result<(), String> {
     sdl_event.register_custom_event::<game_events::WinColorEvent>()?;
 
     let assets = Assets::new(&ttf)?;
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new(&assets, &sdl_event);
     let mut context = DefaultContext::new(&sdl_cxt)?;
 
     let text_creator = context.canvas().texture_creator();
@@ -35,5 +35,5 @@ fn main() -> Result<(), String> {
     runtime.add_state(&mut win_state);
     runtime.add_state(&mut pause_state);
 
-    runtime.run(&mut context, &assets, &sdl_event)
+    runtime.run(&mut context)
 }
