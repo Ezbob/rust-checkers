@@ -45,11 +45,19 @@ struct Score {
     red: usize,
 }
 
+impl Score {
+    fn new() -> Score {
+        Score { green: 0, red: 0 }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Checker {
-    GREEN(usize), // sdl2 rect index
-    RED(usize),
-    NONE,
+    Green(usize), // sdl2 rect index
+    Red(usize),
+    SuperGreen(usize),
+    SuperRed(usize),
+    None,
 }
 
 struct RenderRectangles {
@@ -59,6 +67,20 @@ struct RenderRectangles {
     red_rectangles: [rect::Rect; BOARD_SIZE / 4],
     indicator: rect::Rect,
     debug_tile_text: [rect::Rect; BOARD_SIZE],
+
+}
+
+impl RenderRectangles {
+    fn new() -> RenderRectangles {
+        RenderRectangles {
+            board_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE],
+            black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
+            green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
+            red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
+            indicator: rect::Rect::new(0, 0, 0, 0),
+            debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
+        }
+    }
 }
 
 pub struct BoardState<'ttf> {
@@ -99,31 +121,24 @@ impl<'ttf> BoardState<'ttf> {
     pub fn new(t_creator: &'ttf TextureCreator<WindowContext>) -> BoardState<'ttf> {
         BoardState {
             is_set_up: false,
-            renderings: RenderRectangles {
-                board_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE],
-                black_tiles: [rect::Rect::new(0, 0, 100, 100); BOARD_SIZE / 2],
-                green_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
-                red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
-                indicator: rect::Rect::new(0, 0, 0, 0),
-                debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
-            },
+            renderings: RenderRectangles::new(),
             green_length: 0,
             red_length: 0,
-            score: Score { green: 0, red: 0 },
+            score: Score::new(),
             mouse_point: Point::new(0, 0),
             source_index: None,
             target_index: None,
-            cell_mapping: [Checker::NONE; BOARD_SIZE],
-            playing_color: Checker::GREEN(0),
+            cell_mapping: [Checker::None; BOARD_SIZE],
+            playing_color: Checker::Green(0),
             texture_manager: TextureManager::new(t_creator),
         }
     }
 
     fn switch_turn(&mut self) {
         match self.playing_color {
-            Checker::RED(sdl_rect) => self.playing_color = Checker::GREEN(sdl_rect),
-            Checker::GREEN(sdl_rect) => self.playing_color = Checker::RED(sdl_rect),
-            Checker::NONE => {}
+            Checker::Red(sdl_rect) => self.playing_color = Checker::Green(sdl_rect),
+            Checker::Green(sdl_rect) => self.playing_color = Checker::Red(sdl_rect),
+            _ => {}
         }
     }
 
@@ -132,13 +147,23 @@ impl<'ttf> BoardState<'ttf> {
             let rect = &self.renderings.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
                 match &self.cell_mapping[i] {
-                    Checker::RED { .. } => {
-                        if let Checker::RED { .. } = &self.playing_color {
+                    Checker::Red(..) => {
+                        if let Checker::Red(..) = &self.playing_color {
                             return Some(i);
                         }
                     }
-                    Checker::GREEN { .. } => {
-                        if let Checker::GREEN { .. } = &self.playing_color {
+                    Checker::Green(..) => {
+                        if let Checker::Green(..) = &self.playing_color {
+                            return Some(i);
+                        }
+                    }
+                    Checker::SuperRed(..) => {
+                        if let Checker::Red(..) = &self.playing_color {
+                            return Some(i);
+                        }
+                    }
+                    Checker::SuperGreen(..) => {
+                        if let Checker::Green(..) = &self.playing_color {
                             return Some(i);
                         }
                     }
@@ -161,32 +186,42 @@ impl<'ttf> BoardState<'ttf> {
 
     fn move_to_empty(&mut self, source: usize, target: usize) {
         match self.cell_mapping[source] {
-            Checker::RED(sdl_rect) => {
+            Checker::Red(sdl_rect) => {
                 let rct = &mut self.renderings.red_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                self.cell_mapping[target] = Checker::RED(sdl_rect);
+                if target <= BOARD_LENGTH {
+                    // first line
+                    self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
+                } else {
+                    self.cell_mapping[target] = Checker::Red(sdl_rect);
+                }
             }
-            Checker::GREEN(sdl_rect) => {
+            Checker::Green(sdl_rect) => {
                 let rct = &mut self.renderings.green_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                self.cell_mapping[target] = Checker::GREEN(sdl_rect);
+                if (BOARD_SIZE - BOARD_LENGTH) <= target && target < BOARD_SIZE {
+                    // last line
+                    self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
+                } else {
+                    self.cell_mapping[target] = Checker::Green(sdl_rect);
+                }
             }
-            Checker::NONE => {}
+            _ => {}
         }
-        self.cell_mapping[source] = Checker::NONE;
+        self.cell_mapping[source] = Checker::None;
     }
 
     fn overtake(&mut self, source: usize, victim: usize, end: usize) {
         match self.cell_mapping[victim] {
-            Checker::GREEN(sdl_rect) => {
+            Checker::Green(sdl_rect) => {
                 self.renderings.green_rectangles[sdl_rect]
                     .borrow_mut()
                     .clear();
                 self.score.green -= 1;
             }
-            Checker::RED(sdl_rect) => {
+            Checker::Red(sdl_rect) => {
                 self.renderings.red_rectangles[sdl_rect]
                     .borrow_mut()
                     .clear();
@@ -194,21 +229,21 @@ impl<'ttf> BoardState<'ttf> {
             }
             _ => {}
         };
-        self.cell_mapping[victim] = Checker::NONE;
+        self.cell_mapping[victim] = Checker::None;
         self.move_to_empty(source, end);
     }
 
     fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
         let is_enemy = match &self.cell_mapping[source] {
-            Checker::RED { .. } => {
-                if let Checker::GREEN { .. } = &self.cell_mapping[victim] {
+            Checker::Red { .. } => {
+                if let Checker::Green { .. } = &self.cell_mapping[victim] {
                     true
                 } else {
                     false
                 }
             }
-            Checker::GREEN { .. } => {
-                if let Checker::RED { .. } = &self.cell_mapping[victim] {
+            Checker::Green { .. } => {
+                if let Checker::Red { .. } = &self.cell_mapping[victim] {
                     true
                 } else {
                     false
@@ -217,7 +252,7 @@ impl<'ttf> BoardState<'ttf> {
             _ => false,
         };
 
-        let is_next_empty = self.cell_mapping[end as usize] == Checker::NONE;
+        let is_next_empty = self.cell_mapping[end as usize] == Checker::None;
 
         if is_enemy && is_next_empty {
             self.overtake(source, victim, end as usize);
@@ -260,7 +295,7 @@ impl<'ttf> BoardState<'ttf> {
             // east-west boundary check
             if is_in_bounds(lower) {
                 let right_lower = lower + i;
-                if self.cell_mapping[target_pos] == Checker::NONE
+                if self.cell_mapping[target_pos] == Checker::None
                     && right_lower == target_pos as i32
                 {
                     self.move_to_empty(source_pos, target_pos);
@@ -271,7 +306,7 @@ impl<'ttf> BoardState<'ttf> {
             }
             if is_in_bounds(upper) {
                 let right_upper = upper + i;
-                if self.cell_mapping[target_pos] == Checker::NONE
+                if self.cell_mapping[target_pos] == Checker::None
                     && right_upper == target_pos as i32
                 {
                     self.move_to_empty(source_pos, target_pos);
@@ -286,7 +321,8 @@ impl<'ttf> BoardState<'ttf> {
             // east-west boundary check
             if is_in_bounds(lower) {
                 let left_lower = lower - i;
-                if self.cell_mapping[target_pos] == Checker::NONE && left_lower == target_pos as i32
+                if self.cell_mapping[target_pos] == Checker::None
+                    && left_lower == target_pos as i32
                 {
                     self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
@@ -296,7 +332,8 @@ impl<'ttf> BoardState<'ttf> {
             }
             if is_in_bounds(upper) {
                 let left_upper = upper - i;
-                if self.cell_mapping[target_pos] == Checker::NONE && left_upper == target_pos as i32
+                if self.cell_mapping[target_pos] == Checker::None
+                    && left_upper == target_pos as i32
                 {
                     self.move_to_empty(source_pos, target_pos);
                     self.switch_turn();
@@ -320,7 +357,9 @@ impl GameStateTrait for BoardState<'_> {
             RuntimeSignal::GotoState(1)
         } else {
             if self.source_index != None && self.target_index != None {
-                self.scan_neighbourhood(self.source_index.unwrap(), self.target_index.unwrap(), 1);
+                let source_i = self.source_index.unwrap();
+                let target_i = self.target_index.unwrap();
+                self.scan_neighbourhood(source_i, target_i, 1);
 
                 self.source_index = None;
                 self.target_index = None;
@@ -339,14 +378,17 @@ impl GameStateTrait for BoardState<'_> {
         canvas.fill_rects(&self.renderings.black_tiles)?;
 
         for i in 0..BOARD_SIZE {
-            canvas.copy(
-                self.texture_manager
-                    .get_texture(i)
-                    .unwrap()
-                    .get_texture_ref(),
-                None,
-                self.renderings.debug_tile_text[i],
-            )?;
+            match self.texture_manager.get_texture(i) {
+                Some(twi) => {
+                    canvas.copy(
+                        twi.get_texture_ref(),
+                        None,
+                        self.renderings.debug_tile_text[i],
+                    )?;
+                },
+                None => {}
+            }
+
         }
 
         match self.source_index {
@@ -364,15 +406,9 @@ impl GameStateTrait for BoardState<'_> {
         canvas.fill_rects(&self.renderings.red_rectangles)?;
 
         match self.playing_color {
-            Checker::RED(..) => {
-                canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
-            }
-            Checker::GREEN(..) => {
-                canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
-            }
-            Checker::NONE => {
-                canvas.set_draw_color(Color::RGB(0xea, 0xea, 0xea));
-            }
+            Checker::Red(..) => canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0)),
+            Checker::Green(..) => canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0)),
+            _ => canvas.set_draw_color(Color::RGB(0xea, 0xea, 0xea))
         };
 
         canvas.fill_rect(self.renderings.indicator)?;
@@ -397,12 +433,8 @@ impl GameStateTrait for BoardState<'_> {
                 self.mouse_point.x = *x;
                 self.mouse_point.y = *y;
                 match self.source_index {
-                    None => {
-                        self.source_index = self.find_source_checker_rect();
-                    }
-                    Some(_) => {
-                        self.target_index = self.find_target_rect();
-                    }
+                    None => self.source_index = self.find_source_checker_rect(),
+                    Some(_) => self.target_index = self.find_target_rect()
                 };
                 RuntimeSignal::Continue
             }
@@ -447,7 +479,7 @@ impl GameStateTrait for BoardState<'_> {
                 checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                 checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
 
-                self.cell_mapping[flat_index] = Checker::GREEN(self.green_length);
+                self.cell_mapping[flat_index] = Checker::Green(self.green_length);
                 self.green_length += 1;
             } else if y > (BOARD_LENGTH / 2) {
                 // red stuff
@@ -457,7 +489,7 @@ impl GameStateTrait for BoardState<'_> {
                 checker_rect.set_width((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
                 checker_rect.set_height((CONTAINER_WIDTH - CHECKER_PADDING * 2) as u32);
 
-                self.cell_mapping[flat_index] = Checker::RED(self.red_length);
+                self.cell_mapping[flat_index] = Checker::Red(self.red_length);
                 self.red_length += 1;
             }
 
