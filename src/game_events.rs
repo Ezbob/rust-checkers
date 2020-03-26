@@ -1,5 +1,5 @@
 pub struct WinColorEvent {
-    pub color: i32,
+    pub color: i8,
 }
 
 impl WinColorEvent {

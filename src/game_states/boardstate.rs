@@ -24,6 +24,7 @@ const OUTER_PADDING: usize = 20; // padding from the left most top corner of the
 trait RectExtras {
     fn clear(&mut self);
     fn move_to(&mut self, rect: &rect::Rect);
+    fn move_yellow(&mut self, rect: &rect::Rect);
 }
 
 impl RectExtras for rect::Rect {
@@ -35,6 +36,11 @@ impl RectExtras for rect::Rect {
     }
 
     fn move_to(&mut self, rect: &rect::Rect) {
+        self.set_x(rect.x() + CHECKER_PADDING as i32);
+        self.set_y(rect.y() + CHECKER_PADDING as i32);
+    }
+
+    fn move_yellow(&mut self, rect: &rect::Rect) {
         self.set_x(rect.x() + CHECKER_PADDING as i32);
         self.set_y(rect.y() + CHECKER_PADDING as i32);
     }
@@ -63,11 +69,14 @@ enum Checker {
 struct RenderRectangles {
     board_tiles: [rect::Rect; BOARD_SIZE],
     black_tiles: [rect::Rect; BOARD_SIZE / 2],
+
     green_rectangles: [rect::Rect; BOARD_SIZE / 4],
     red_rectangles: [rect::Rect; BOARD_SIZE / 4],
-    indicator: rect::Rect,
-    debug_tile_text: [rect::Rect; BOARD_SIZE],
 
+    yellow_rectangles: [rect::Rect; BOARD_SIZE],
+
+    indicator: rect::Rect,
+    debug_tile_text: [rect::Rect; BOARD_SIZE]
 }
 
 impl RenderRectangles {
@@ -79,6 +88,7 @@ impl RenderRectangles {
             red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
             indicator: rect::Rect::new(0, 0, 0, 0),
             debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
+            yellow_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE]
         }
     }
 }
@@ -115,6 +125,14 @@ fn row_up(pos: usize, n: i32) -> i32 {
 
 fn row_down(pos: usize, n: i32) -> i32 {
     (pos as i32) + (n * BOARD_LENGTH as i32)
+}
+
+fn yellow_for_red(i: usize) -> usize {
+    BOARD_LENGTH + i
+}
+
+fn yellow_for_green(i: usize) -> usize {
+    i
 }
 
 impl<'ttf> BoardState<'ttf> {
@@ -192,7 +210,15 @@ impl<'ttf> BoardState<'ttf> {
 
                 if target <= BOARD_LENGTH {
                     // first line
-                    self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
+                    {
+                        self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
+                    }
+                    if let Some(a) = self.renderings.yellow_rectangles.get_mut(yellow_for_red(sdl_rect)) {
+                        a.set_x(rct.x());
+                        a.set_y(rct.y());
+                        a.set_width(20);
+                        a.set_height(20);
+                    }
                 } else {
                     self.cell_mapping[target] = Checker::Red(sdl_rect);
                 }
@@ -203,11 +229,48 @@ impl<'ttf> BoardState<'ttf> {
 
                 if (BOARD_SIZE - BOARD_LENGTH) <= target && target < BOARD_SIZE {
                     // last line
-                    self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
+                    {
+                        self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
+                    }
+
+                    if let Some(a) = self.renderings.yellow_rectangles.get_mut(yellow_for_green(sdl_rect)) {
+                        a.set_x(rct.x());
+                        a.set_y(rct.y());
+                        a.set_width(20);
+                        a.set_height(20);
+                    }
                 } else {
                     self.cell_mapping[target] = Checker::Green(sdl_rect);
                 }
-            }
+            },
+            Checker::SuperGreen(sdl_rect) => {
+                let target_rct = &self.renderings.board_tiles[target];
+                {
+                    let rct = &mut self.renderings.green_rectangles[sdl_rect];
+                    rct.move_to(target_rct);
+                }
+
+                {
+                    let rct = &mut self.renderings.yellow_rectangles[yellow_for_green(sdl_rect)];
+                    rct.move_yellow(target_rct);
+                }
+
+                self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
+            },
+            Checker::SuperRed(sdl_rect) => {
+                let target_rct = &self.renderings.board_tiles[target];
+                {
+                    let rct = &mut self.renderings.red_rectangles[sdl_rect];
+                    rct.move_to(target_rct);
+                }
+
+                {
+                    let rct = &mut self.renderings.yellow_rectangles[yellow_for_red(sdl_rect)];
+                    rct.move_yellow(target_rct);
+                }
+
+                self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
+            },
             _ => {}
         }
         self.cell_mapping[source] = Checker::None;
@@ -404,6 +467,9 @@ impl GameStateTrait for BoardState<'_> {
 
         canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
         canvas.fill_rects(&self.renderings.red_rectangles)?;
+
+        canvas.set_draw_color(Color::RGB(0xef, 0xef, 0x00));
+        canvas.fill_rects(&self.renderings.yellow_rectangles)?;
 
         match self.playing_color {
             Checker::Red(..) => canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0)),
