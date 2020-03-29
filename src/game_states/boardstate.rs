@@ -334,7 +334,7 @@ impl<'ttf> BoardState<'ttf> {
                     .borrow_mut()
                     .clear();
                 self.score.red -= 1;
-            },
+            }
             Checker::SuperGreen(sdl_rect) => {
                 {
                     self.renderings.green_rectangles[sdl_rect]
@@ -342,9 +342,10 @@ impl<'ttf> BoardState<'ttf> {
                         .clear();
                 }
                 self.renderings.yellow_rectangles[yellow_for_green(sdl_rect)]
-                    .borrow_mut().clear();
+                    .borrow_mut()
+                    .clear();
                 self.score.green -= 1;
-            },
+            }
             Checker::SuperRed(sdl_rect) => {
                 {
                     self.renderings.red_rectangles[sdl_rect]
@@ -352,9 +353,10 @@ impl<'ttf> BoardState<'ttf> {
                         .clear();
                 }
                 self.renderings.yellow_rectangles[yellow_for_red(sdl_rect)]
-                    .borrow_mut().clear();
+                    .borrow_mut()
+                    .clear();
                 self.score.red -= 1;
-            },
+            }
             _ => {}
         };
         self.cell_mapping[victim] = Checker::None;
@@ -362,7 +364,7 @@ impl<'ttf> BoardState<'ttf> {
     }
 
     fn try_to_overtake(&mut self, source: usize, victim: usize, end: usize) {
-        let is_enemy= self.cell_mapping[source].is_different_color(&self.cell_mapping[victim]);
+        let is_enemy = self.cell_mapping[source].is_different_color(&self.cell_mapping[victim]);
         let is_next_empty = self.cell_mapping[end].is_none();
 
         if is_enemy && is_next_empty {
@@ -403,9 +405,7 @@ impl<'ttf> BoardState<'ttf> {
         let upper = row_up(source_pos, i) + i;
         if is_in_bounds(lower) {
             let right_lower = lower as usize;
-            if self.cell_mapping[target_pos].is_none()
-                && right_lower == target_pos
-            {
+            if self.cell_mapping[target_pos].is_none() && right_lower == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if right_lower == target_pos {
@@ -414,9 +414,7 @@ impl<'ttf> BoardState<'ttf> {
         }
         if is_in_bounds(upper) {
             let right_upper = upper as usize;
-            if self.cell_mapping[target_pos].is_none()
-                && right_upper == target_pos
-            {
+            if self.cell_mapping[target_pos].is_none() && right_upper == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if right_upper == target_pos {
@@ -426,32 +424,28 @@ impl<'ttf> BoardState<'ttf> {
     }
 
     fn scan_left_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let lower = row_down(source_pos, i) - i;
-        let upper = row_up(source_pos, i) - i;
+        let left_lower = row_down(source_pos, i) - i;
+        let left_upper = row_up(source_pos, i) - i;
         // east-west boundary check
-        if is_in_bounds(lower) {
-            let left_lower = lower as usize;
-            if self.cell_mapping[target_pos].is_none() && left_lower == target_pos {
+        if is_in_bounds(left_lower) {
+            if self.cell_mapping[target_pos].is_none() && left_lower as usize == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
-            } else if left_lower == target_pos {
+            } else if left_lower as usize == target_pos {
                 self.check_next_down_left(source_pos, target_pos);
             }
         }
-        if is_in_bounds(upper) {
-            let left_upper = upper as usize;
-            if self.cell_mapping[target_pos].is_none() && left_upper == target_pos
-            {
+        if is_in_bounds(left_upper) {
+            if self.cell_mapping[target_pos].is_none() && left_upper as usize  == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
-            } else if left_upper == target_pos {
+            } else if left_upper as usize == target_pos {
                 self.check_next_up_left(source_pos, target_pos);
             }
         }
     }
 
     fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize) {
-
         if !on_right_edge(source_pos) {
             // east-west boundary check
             self.scan_right_neighbourhood(source_pos, target_pos, 1);
@@ -464,7 +458,6 @@ impl<'ttf> BoardState<'ttf> {
     }
 
     fn scan_diagonals(&mut self, source_pos: usize, target_pos: usize) {
-
         if !on_right_edge(source_pos) {
             for i in 1..=BOARD_LENGTH {
                 self.scan_right_neighbourhood(source_pos, target_pos, i as i32);
