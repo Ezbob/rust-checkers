@@ -409,6 +409,7 @@ impl<'ttf> BoardState<'ttf> {
 }
 
 impl GameStateTrait for BoardState<'_> {
+
     fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
         if self.score.red <= 0 || self.score.green <= 0 {
             if self.score.red <= 0 {
@@ -419,10 +420,12 @@ impl GameStateTrait for BoardState<'_> {
 
             RuntimeSignal::GotoState(1)
         } else {
-            if self.source_index != None && self.target_index != None {
+            if self.source_index.is_some() && self.target_index.is_some() {
                 let source_i = self.source_index.unwrap();
                 let target_i = self.target_index.unwrap();
-                self.scan_neighbourhood(source_i, target_i, 1);
+
+                
+                self.scan_neighbourhood(source_i, target_i, 2);
 
                 self.source_index = None;
                 self.target_index = None;
@@ -437,6 +440,7 @@ impl GameStateTrait for BoardState<'_> {
 
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.draw_rects(&self.renderings.board_tiles)?;
+
         canvas.set_draw_color(Color::RGB(0x1f, 0x1f, 0x1f));
         canvas.fill_rects(&self.renderings.black_tiles)?;
 
@@ -451,7 +455,6 @@ impl GameStateTrait for BoardState<'_> {
                 },
                 None => {}
             }
-
         }
 
         match self.source_index {
