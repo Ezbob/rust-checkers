@@ -66,6 +66,46 @@ enum Checker {
     None,
 }
 
+impl Checker {
+    fn is_super(&self) -> bool {
+        match self {
+            Checker::SuperRed(..) | Checker::SuperGreen(..) => true,
+            _ => false,
+        }
+    }
+
+    fn is_green(&self) -> bool {
+        match self {
+            Checker::SuperGreen(..) | Checker::Green(..) => true,
+            _ => false,
+        }
+    }
+
+    fn is_red(&self) -> bool {
+        match self {
+            Checker::SuperRed(..) | Checker::Red(..) => true,
+            _ => false,
+        }
+    }
+
+    fn is_none(&self) -> bool {
+        match self {
+            Checker::None => true,
+            _ => false,
+        }
+    }
+
+    fn is_same_color(&self, other: &Checker) -> bool {
+        (self.is_red() && other.is_red())
+            || (self.is_green() && other.is_green())
+            || (self.is_none() && other.is_none())
+    }
+
+    fn is_different_color(&self, other: &Checker) -> bool {
+        !self.is_same_color(other)
+    }
+}
+
 struct RenderRectangles {
     board_tiles: [rect::Rect; BOARD_SIZE],
     black_tiles: [rect::Rect; BOARD_SIZE / 2],
@@ -76,7 +116,7 @@ struct RenderRectangles {
     yellow_rectangles: [rect::Rect; BOARD_SIZE],
 
     indicator: rect::Rect,
-    debug_tile_text: [rect::Rect; BOARD_SIZE]
+    debug_tile_text: [rect::Rect; BOARD_SIZE],
 }
 
 impl RenderRectangles {
@@ -88,7 +128,7 @@ impl RenderRectangles {
             red_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE / 4],
             indicator: rect::Rect::new(0, 0, 0, 0),
             debug_tile_text: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
-            yellow_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE]
+            yellow_rectangles: [rect::Rect::new(0, 0, 0, 0); BOARD_SIZE],
         }
     }
 }
@@ -135,6 +175,14 @@ fn yellow_for_green(i: usize) -> usize {
     i
 }
 
+fn is_on_last_line(i: usize) -> bool {
+    (BOARD_SIZE - BOARD_LENGTH) <= i && i < BOARD_SIZE
+}
+
+fn is_on_first_line(i: usize) -> bool {
+    i <= BOARD_LENGTH
+}
+
 impl<'ttf> BoardState<'ttf> {
     pub fn new(t_creator: &'ttf TextureCreator<WindowContext>) -> BoardState<'ttf> {
         BoardState {
@@ -152,6 +200,14 @@ impl<'ttf> BoardState<'ttf> {
         }
     }
 
+    fn get_source_checker_ref(&self) -> Option<(&Checker, usize)> {
+        if let Some(i) = self.source_index {
+            Some((&self.cell_mapping[i], i))
+        } else {
+            None
+        }
+    }
+
     fn switch_turn(&mut self) {
         match self.playing_color {
             Checker::Red(sdl_rect) => self.playing_color = Checker::Green(sdl_rect),
@@ -164,28 +220,9 @@ impl<'ttf> BoardState<'ttf> {
         for i in 0..self.renderings.board_tiles.len() {
             let rect = &self.renderings.board_tiles[i];
             if rect.contains_point(self.mouse_point) {
-                match &self.cell_mapping[i] {
-                    Checker::Red(..) => {
-                        if let Checker::Red(..) = &self.playing_color {
-                            return Some(i);
-                        }
-                    }
-                    Checker::Green(..) => {
-                        if let Checker::Green(..) = &self.playing_color {
-                            return Some(i);
-                        }
-                    }
-                    Checker::SuperRed(..) => {
-                        if let Checker::Red(..) = &self.playing_color {
-                            return Some(i);
-                        }
-                    }
-                    Checker::SuperGreen(..) => {
-                        if let Checker::Green(..) = &self.playing_color {
-                            return Some(i);
-                        }
-                    }
-                    _ => {}
+                let cell = &self.cell_mapping[i];
+                if cell.is_same_color(&self.playing_color) {
+                    return Some(i);
                 }
             }
         }
@@ -208,12 +245,16 @@ impl<'ttf> BoardState<'ttf> {
                 let rct = &mut self.renderings.red_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                if target <= BOARD_LENGTH {
+                if is_on_first_line(target) {
                     // first line
                     {
                         self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
                     }
-                    if let Some(a) = self.renderings.yellow_rectangles.get_mut(yellow_for_red(sdl_rect)) {
+                    if let Some(a) = self
+                        .renderings
+                        .yellow_rectangles
+                        .get_mut(yellow_for_red(sdl_rect))
+                    {
                         a.set_x(rct.x());
                         a.set_y(rct.y());
                         a.set_width(20);
@@ -227,13 +268,17 @@ impl<'ttf> BoardState<'ttf> {
                 let rct = &mut self.renderings.green_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                if (BOARD_SIZE - BOARD_LENGTH) <= target && target < BOARD_SIZE {
+                if is_on_last_line(target) {
                     // last line
                     {
                         self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
                     }
 
-                    if let Some(a) = self.renderings.yellow_rectangles.get_mut(yellow_for_green(sdl_rect)) {
+                    if let Some(a) = self
+                        .renderings
+                        .yellow_rectangles
+                        .get_mut(yellow_for_green(sdl_rect))
+                    {
                         a.set_x(rct.x());
                         a.set_y(rct.y());
                         a.set_width(20);
@@ -242,7 +287,7 @@ impl<'ttf> BoardState<'ttf> {
                 } else {
                     self.cell_mapping[target] = Checker::Green(sdl_rect);
                 }
-            },
+            }
             Checker::SuperGreen(sdl_rect) => {
                 let target_rct = &self.renderings.board_tiles[target];
                 {
@@ -256,7 +301,7 @@ impl<'ttf> BoardState<'ttf> {
                 }
 
                 self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
-            },
+            }
             Checker::SuperRed(sdl_rect) => {
                 let target_rct = &self.renderings.board_tiles[target];
                 {
@@ -270,7 +315,7 @@ impl<'ttf> BoardState<'ttf> {
                 }
 
                 self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
-            },
+            }
             _ => {}
         }
         self.cell_mapping[source] = Checker::None;
@@ -297,24 +342,7 @@ impl<'ttf> BoardState<'ttf> {
     }
 
     fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
-        let is_enemy = match &self.cell_mapping[source] {
-            Checker::Red { .. } => {
-                if let Checker::Green { .. } = &self.cell_mapping[victim] {
-                    true
-                } else {
-                    false
-                }
-            }
-            Checker::Green { .. } => {
-                if let Checker::Red { .. } = &self.cell_mapping[victim] {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        };
-
+        let is_enemy= *&self.cell_mapping[source].is_different_color(&self.cell_mapping[victim]);
         let is_next_empty = self.cell_mapping[end as usize] == Checker::None;
 
         if is_enemy && is_next_empty {
@@ -350,66 +378,88 @@ impl<'ttf> BoardState<'ttf> {
         }
     }
 
-    fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let lower = row_down(source_pos, i);
-        let upper = row_up(source_pos, i);
+    fn scan_right_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
+        let lower = row_down(source_pos, i) + i;
+        let upper = row_up(source_pos, i) + i;
+        if is_in_bounds(lower) {
+            let right_lower = lower as usize;
+            if self.cell_mapping[target_pos].is_none()
+                && right_lower == target_pos
+            {
+                self.move_to_empty(source_pos, target_pos);
+                self.switch_turn();
+            } else if right_lower == target_pos {
+                self.check_next_down(source_pos, target_pos, true);
+            }
+        }
+        if is_in_bounds(upper) {
+            let right_upper = upper as usize;
+            if self.cell_mapping[target_pos].is_none()
+                && right_upper == target_pos
+            {
+                self.move_to_empty(source_pos, target_pos);
+                self.switch_turn();
+            } else if right_upper == target_pos {
+                self.check_next_up(source_pos, target_pos, true);
+            }
+        }
+    }
+
+    fn scan_left_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
+        let lower = row_down(source_pos, i) - i;
+        let upper = row_up(source_pos, i) - i;
+        // east-west boundary check
+        if is_in_bounds(lower) {
+            let left_lower = lower as usize;
+            if self.cell_mapping[target_pos].is_none() && left_lower == target_pos {
+                self.move_to_empty(source_pos, target_pos);
+                self.switch_turn();
+            } else if left_lower == target_pos {
+                self.check_next_down(source_pos, target_pos, false);
+            }
+        }
+        if is_in_bounds(upper) {
+            let left_upper = upper as usize;
+            if self.cell_mapping[target_pos].is_none() && left_upper == target_pos
+            {
+                self.move_to_empty(source_pos, target_pos);
+                self.switch_turn();
+            } else if left_upper == target_pos {
+                self.check_next_up(source_pos, target_pos, false);
+            }
+        }
+    }
+
+    fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize) {
 
         if !on_right_edge(source_pos) {
             // east-west boundary check
-            if is_in_bounds(lower) {
-                let right_lower = lower + i;
-                if self.cell_mapping[target_pos] == Checker::None
-                    && right_lower == target_pos as i32
-                {
-                    self.move_to_empty(source_pos, target_pos);
-                    self.switch_turn();
-                } else if right_lower == target_pos as i32 {
-                    self.check_next_down(source_pos, target_pos, true);
-                }
-            }
-            if is_in_bounds(upper) {
-                let right_upper = upper + i;
-                if self.cell_mapping[target_pos] == Checker::None
-                    && right_upper == target_pos as i32
-                {
-                    self.move_to_empty(source_pos, target_pos);
-                    self.switch_turn();
-                } else if right_upper == target_pos as i32 {
-                    self.check_next_up(source_pos, target_pos, true);
-                }
-            }
+            self.scan_right_neighbourhood(source_pos, target_pos, 1);
         }
 
         if !on_left_edge(source_pos) {
             // east-west boundary check
-            if is_in_bounds(lower) {
-                let left_lower = lower - i;
-                if self.cell_mapping[target_pos] == Checker::None
-                    && left_lower == target_pos as i32
-                {
-                    self.move_to_empty(source_pos, target_pos);
-                    self.switch_turn();
-                } else if left_lower == target_pos as i32 {
-                    self.check_next_down(source_pos, target_pos, false);
-                }
+            self.scan_left_neighbourhood(source_pos, target_pos, 1);
+        }
+    }
+
+    fn scan_diagonals(&mut self, source_pos: usize, target_pos: usize) {
+
+        if !on_right_edge(source_pos) {
+            for i in 1..=BOARD_LENGTH {
+                self.scan_right_neighbourhood(source_pos, target_pos, i as i32);
             }
-            if is_in_bounds(upper) {
-                let left_upper = upper - i;
-                if self.cell_mapping[target_pos] == Checker::None
-                    && left_upper == target_pos as i32
-                {
-                    self.move_to_empty(source_pos, target_pos);
-                    self.switch_turn();
-                } else if left_upper == target_pos as i32 {
-                    self.check_next_up(source_pos, target_pos, false);
-                }
+        }
+
+        if !on_left_edge(source_pos) {
+            for i in 1..=BOARD_LENGTH {
+                self.scan_left_neighbourhood(source_pos, target_pos, i as i32);
             }
         }
     }
 }
 
 impl GameStateTrait for BoardState<'_> {
-
     fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
         if self.score.red <= 0 || self.score.green <= 0 {
             if self.score.red <= 0 {
@@ -421,11 +471,14 @@ impl GameStateTrait for BoardState<'_> {
             RuntimeSignal::GotoState(1)
         } else {
             if self.source_index.is_some() && self.target_index.is_some() {
-                let source_i = self.source_index.unwrap();
+                let (source_checker, source_i) = self.get_source_checker_ref().unwrap();
                 let target_i = self.target_index.unwrap();
 
-                
-                self.scan_neighbourhood(source_i, target_i, 2);
+                if source_checker.is_super() {
+                    self.scan_diagonals(source_i, target_i);
+                } else {
+                    self.scan_neighbourhood(source_i, target_i);
+                }
 
                 self.source_index = None;
                 self.target_index = None;
@@ -445,25 +498,19 @@ impl GameStateTrait for BoardState<'_> {
         canvas.fill_rects(&self.renderings.black_tiles)?;
 
         for i in 0..BOARD_SIZE {
-            match self.texture_manager.get_texture(i) {
-                Some(twi) => {
-                    canvas.copy(
-                        twi.get_texture_ref(),
-                        None,
-                        self.renderings.debug_tile_text[i],
-                    )?;
-                },
-                None => {}
+            if let Some(twi) = self.texture_manager.get_texture(i) {
+                canvas.copy(
+                    twi.get_texture_ref(),
+                    None,
+                    self.renderings.debug_tile_text[i],
+                )?;
             }
         }
 
-        match self.source_index {
-            Some(i) => {
-                canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
-                canvas.fill_rect(self.renderings.board_tiles[i])?;
-            }
-            None => {}
-        };
+        if let Some(i) = self.source_index {
+            canvas.set_draw_color(Color::RGB(0x0, 0x0f, 0xfa));
+            canvas.fill_rect(self.renderings.board_tiles[i])?;
+        }
 
         canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
         canvas.fill_rects(&self.renderings.green_rectangles)?;
@@ -474,11 +521,13 @@ impl GameStateTrait for BoardState<'_> {
         canvas.set_draw_color(Color::RGB(0xef, 0xef, 0x00));
         canvas.fill_rects(&self.renderings.yellow_rectangles)?;
 
-        match self.playing_color {
-            Checker::Red(..) => canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0)),
-            Checker::Green(..) => canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0)),
-            _ => canvas.set_draw_color(Color::RGB(0xea, 0xea, 0xea))
-        };
+        if self.playing_color.is_green() {
+            canvas.set_draw_color(Color::RGB(0x0, 0xff, 0x0));
+        } else if self.playing_color.is_red() {
+            canvas.set_draw_color(Color::RGB(0xff, 0x0, 0x0));
+        } else {
+            canvas.set_draw_color(Color::RGB(0xea, 0xea, 0xea));
+        }
 
         canvas.fill_rect(self.renderings.indicator)?;
 
@@ -503,7 +552,7 @@ impl GameStateTrait for BoardState<'_> {
                 self.mouse_point.y = *y;
                 match self.source_index {
                     None => self.source_index = self.find_source_checker_rect(),
-                    Some(_) => self.target_index = self.find_target_rect()
+                    Some(_) => self.target_index = self.find_target_rect(),
                 };
                 RuntimeSignal::Continue
             }
@@ -566,8 +615,8 @@ impl GameStateTrait for BoardState<'_> {
                 let font = font_with_info.font_ref();
                 self.texture_manager.insert_surface_as_texture(
                     flat_index,
-                    font.render(format!("{}", flat_index).as_ref())
-                        .blended(Color::RGB(0x08, 0xff, 0xff))
+                    font.render(format!("{}", flat_index + 1).as_ref())
+                        .blended(Color::RGB(0x0, 0x0, 0x0))
                         .map_err(|err| err.to_string())?,
                 )?;
             }
