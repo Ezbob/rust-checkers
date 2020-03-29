@@ -401,23 +401,21 @@ impl<'ttf> BoardState<'ttf> {
     }
 
     fn scan_right_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let lower = row_down(source_pos, i) + i;
-        let upper = row_up(source_pos, i) + i;
-        if is_in_bounds(lower) {
-            let right_lower = lower as usize;
-            if self.cell_mapping[target_pos].is_none() && right_lower == target_pos {
+        let right_lower = row_down(source_pos, i) + i;
+        let right_upper = row_up(source_pos, i) + i;
+        if is_in_bounds(right_lower) {
+            if self.cell_mapping[target_pos].is_none() && right_lower as usize == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
-            } else if right_lower == target_pos {
+            } else if right_lower as usize == target_pos {
                 self.check_next_down_right(source_pos, target_pos);
             }
         }
-        if is_in_bounds(upper) {
-            let right_upper = upper as usize;
-            if self.cell_mapping[target_pos].is_none() && right_upper == target_pos {
+        if is_in_bounds(right_upper) {
+            if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
-            } else if right_upper == target_pos {
+            } else if right_upper as usize == target_pos  {
                 self.check_next_up_right(source_pos, target_pos);
             }
         }
