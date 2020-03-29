@@ -334,47 +334,67 @@ impl<'ttf> BoardState<'ttf> {
                     .borrow_mut()
                     .clear();
                 self.score.red -= 1;
-            }
+            },
+            Checker::SuperGreen(sdl_rect) => {
+                {
+                    self.renderings.green_rectangles[sdl_rect]
+                        .borrow_mut()
+                        .clear();
+                }
+                self.renderings.yellow_rectangles[yellow_for_green(sdl_rect)]
+                    .borrow_mut().clear();
+                self.score.green -= 1;
+            },
+            Checker::SuperRed(sdl_rect) => {
+                {
+                    self.renderings.red_rectangles[sdl_rect]
+                        .borrow_mut()
+                        .clear();
+                }
+                self.renderings.yellow_rectangles[yellow_for_red(sdl_rect)]
+                    .borrow_mut().clear();
+                self.score.red -= 1;
+            },
             _ => {}
         };
         self.cell_mapping[victim] = Checker::None;
         self.move_to_empty(source, end);
     }
 
-    fn try_to_overtake(&mut self, source: usize, victim: usize, end: i32) {
-        let is_enemy= *&self.cell_mapping[source].is_different_color(&self.cell_mapping[victim]);
-        let is_next_empty = self.cell_mapping[end as usize] == Checker::None;
+    fn try_to_overtake(&mut self, source: usize, victim: usize, end: usize) {
+        let is_enemy= self.cell_mapping[source].is_different_color(&self.cell_mapping[victim]);
+        let is_next_empty = self.cell_mapping[end].is_none();
 
         if is_enemy && is_next_empty {
-            self.overtake(source, victim, end as usize);
+            self.overtake(source, victim, end);
         }
     }
 
-    fn check_next_down(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
-        let left_right_steps = 2;
-        let next_lower = row_down(source_pos, left_right_steps);
-
+    fn check_next_down_right(&mut self, source_pos: usize, target_pos: usize) {
+        let next_lower = row_down(target_pos, 1) + 1;
         if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_lower) {
-            let x_steps = if is_right {
-                left_right_steps
-            } else {
-                -left_right_steps
-            };
-            self.try_to_overtake(source_pos, target_pos, next_lower + x_steps);
+            self.try_to_overtake(source_pos, target_pos, next_lower as usize);
         }
     }
 
-    fn check_next_up(&mut self, source_pos: usize, target_pos: usize, is_right: bool) {
-        let left_right_steps = 2;
-        let next_upper = row_up(source_pos, left_right_steps);
-
+    fn check_next_up_right(&mut self, source_pos: usize, target_pos: usize) {
+        let next_upper = row_up(target_pos, 1) + 1;
         if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_upper) {
-            let x_steps = if is_right {
-                left_right_steps
-            } else {
-                -left_right_steps
-            };
-            self.try_to_overtake(source_pos, target_pos, next_upper + x_steps);
+            self.try_to_overtake(source_pos, target_pos, next_upper as usize);
+        }
+    }
+
+    fn check_next_down_left(&mut self, source_pos: usize, target_pos: usize) {
+        let next_lower = row_down(target_pos, 1) - 1;
+        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_lower) {
+            self.try_to_overtake(source_pos, target_pos, next_lower as usize);
+        }
+    }
+
+    fn check_next_up_left(&mut self, source_pos: usize, target_pos: usize) {
+        let next_upper = row_up(target_pos, 1) - 1;
+        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_upper) {
+            self.try_to_overtake(source_pos, target_pos, next_upper as usize);
         }
     }
 
@@ -389,7 +409,7 @@ impl<'ttf> BoardState<'ttf> {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if right_lower == target_pos {
-                self.check_next_down(source_pos, target_pos, true);
+                self.check_next_down_right(source_pos, target_pos);
             }
         }
         if is_in_bounds(upper) {
@@ -400,7 +420,7 @@ impl<'ttf> BoardState<'ttf> {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if right_upper == target_pos {
-                self.check_next_up(source_pos, target_pos, true);
+                self.check_next_up_right(source_pos, target_pos);
             }
         }
     }
@@ -415,7 +435,7 @@ impl<'ttf> BoardState<'ttf> {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if left_lower == target_pos {
-                self.check_next_down(source_pos, target_pos, false);
+                self.check_next_down_left(source_pos, target_pos);
             }
         }
         if is_in_bounds(upper) {
@@ -425,7 +445,7 @@ impl<'ttf> BoardState<'ttf> {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if left_upper == target_pos {
-                self.check_next_up(source_pos, target_pos, false);
+                self.check_next_up_left(source_pos, target_pos);
             }
         }
     }
@@ -615,7 +635,7 @@ impl GameStateTrait for BoardState<'_> {
                 let font = font_with_info.font_ref();
                 self.texture_manager.insert_surface_as_texture(
                     flat_index,
-                    font.render(format!("{}", flat_index + 1).as_ref())
+                    font.render(format!("{}", flat_index).as_ref())
                         .blended(Color::RGB(0x0, 0x0, 0x0))
                         .map_err(|err| err.to_string())?,
                 )?;
