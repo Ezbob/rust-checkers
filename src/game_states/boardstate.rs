@@ -460,7 +460,7 @@ impl<'ttf> BoardState<'ttf> {
             for i in 1..=BOARD_LENGTH {
                 let j = i as i32;
                 let right_lower = row_down(source_pos, j) + j;
-                let right_upper = row_up(source_pos, j) + j;
+
                 if is_in_bounds(right_lower) {
                     if self.cell_mapping[target_pos].is_none() && right_lower as usize == target_pos {
                         self.move_to_empty(source_pos, target_pos);
@@ -469,6 +469,11 @@ impl<'ttf> BoardState<'ttf> {
                         self.check_next_down_right(source_pos, target_pos);
                     }
                 }
+            }
+            for i in 1..=BOARD_LENGTH {
+                let j = i as i32;
+                let right_upper = row_up(source_pos, j) + j;
+
                 if is_in_bounds(right_upper) {
                     if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
                         self.move_to_empty(source_pos, target_pos);
@@ -484,8 +489,7 @@ impl<'ttf> BoardState<'ttf> {
             for i in 1..=BOARD_LENGTH {
                 let j = i as i32;
                 let left_lower = row_down(source_pos, j) - j;
-                let left_upper = row_up(source_pos, j) - j;
-                // east-west boundary check
+
                 if is_in_bounds(left_lower) {
                     if self.cell_mapping[target_pos].is_none() && left_lower as usize == target_pos {
                         self.move_to_empty(source_pos, target_pos);
@@ -494,6 +498,12 @@ impl<'ttf> BoardState<'ttf> {
                         self.check_next_down_left(source_pos, target_pos);
                     }
                 }
+            }
+
+            for i in 1..=BOARD_LENGTH {
+                let j = i as i32;
+                let left_upper = row_up(source_pos, j) - j;
+
                 if is_in_bounds(left_upper) {
                     if self.cell_mapping[target_pos].is_none() && left_upper as usize == target_pos {
                         self.move_to_empty(source_pos, target_pos);
