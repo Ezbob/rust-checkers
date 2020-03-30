@@ -175,11 +175,11 @@ fn yellow_for_green(i: usize) -> usize {
     i
 }
 
-fn is_on_last_line(i: usize) -> bool {
+fn on_last_line(i: usize) -> bool {
     (BOARD_SIZE - BOARD_LENGTH) <= i && i < BOARD_SIZE
 }
 
-fn is_on_first_line(i: usize) -> bool {
+fn on_first_line(i: usize) -> bool {
     i <= BOARD_LENGTH
 }
 
@@ -245,7 +245,7 @@ impl<'ttf> BoardState<'ttf> {
                 let rct = &mut self.renderings.red_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                if is_on_first_line(target) {
+                if on_first_line(target) {
                     // first line
                     {
                         self.cell_mapping[target] = Checker::SuperRed(sdl_rect);
@@ -268,7 +268,7 @@ impl<'ttf> BoardState<'ttf> {
                 let rct = &mut self.renderings.green_rectangles[sdl_rect];
                 rct.move_to(&self.renderings.board_tiles[target]);
 
-                if is_on_last_line(target) {
+                if on_last_line(target) {
                     // last line
                     {
                         self.cell_mapping[target] = Checker::SuperGreen(sdl_rect);
@@ -415,7 +415,7 @@ impl<'ttf> BoardState<'ttf> {
             if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
-            } else if right_upper as usize == target_pos  {
+            } else if right_upper as usize == target_pos {
                 self.check_next_up_right(source_pos, target_pos);
             }
         }
@@ -434,7 +434,7 @@ impl<'ttf> BoardState<'ttf> {
             }
         }
         if is_in_bounds(left_upper) {
-            if self.cell_mapping[target_pos].is_none() && left_upper as usize  == target_pos {
+            if self.cell_mapping[target_pos].is_none() && left_upper as usize == target_pos {
                 self.move_to_empty(source_pos, target_pos);
                 self.switch_turn();
             } else if left_upper as usize == target_pos {
@@ -458,13 +458,50 @@ impl<'ttf> BoardState<'ttf> {
     fn scan_diagonals(&mut self, source_pos: usize, target_pos: usize) {
         if !on_right_edge(source_pos) {
             for i in 1..=BOARD_LENGTH {
-                self.scan_right_neighbourhood(source_pos, target_pos, i as i32);
+                let j = i as i32;
+                let right_lower = row_down(source_pos, j) + j;
+                let right_upper = row_up(source_pos, j) + j;
+                if is_in_bounds(right_lower) {
+                    if self.cell_mapping[target_pos].is_none() && right_lower as usize == target_pos {
+                        self.move_to_empty(source_pos, target_pos);
+                        self.switch_turn();
+                    } else if right_lower as usize == target_pos {
+                        self.check_next_down_right(source_pos, target_pos);
+                    }
+                }
+                if is_in_bounds(right_upper) {
+                    if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
+                        self.move_to_empty(source_pos, target_pos);
+                        self.switch_turn();
+                    } else if right_upper as usize == target_pos {
+                        self.check_next_up_right(source_pos, target_pos);
+                    }
+                }
             }
         }
 
         if !on_left_edge(source_pos) {
             for i in 1..=BOARD_LENGTH {
-                self.scan_left_neighbourhood(source_pos, target_pos, i as i32);
+                let j = i as i32;
+                let left_lower = row_down(source_pos, j) - j;
+                let left_upper = row_up(source_pos, j) - j;
+                // east-west boundary check
+                if is_in_bounds(left_lower) {
+                    if self.cell_mapping[target_pos].is_none() && left_lower as usize == target_pos {
+                        self.move_to_empty(source_pos, target_pos);
+                        self.switch_turn();
+                    } else if left_lower as usize == target_pos {
+                        self.check_next_down_left(source_pos, target_pos);
+                    }
+                }
+                if is_in_bounds(left_upper) {
+                    if self.cell_mapping[target_pos].is_none() && left_upper as usize == target_pos {
+                        self.move_to_empty(source_pos, target_pos);
+                        self.switch_turn();
+                    } else if left_upper as usize == target_pos {
+                        self.check_next_up_left(source_pos, target_pos);
+                    }
+                }
             }
         }
     }
