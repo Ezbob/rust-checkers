@@ -95,6 +95,10 @@ impl Checker {
         }
     }
 
+    fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+
     fn is_same_color(&self, other: &Checker) -> bool {
         (self.is_red() && other.is_red())
             || (self.is_green() && other.is_green())
@@ -400,6 +404,26 @@ impl<'ttf> BoardState<'ttf> {
         }
     }
 
+    fn check_next(&mut self, source_pos: usize, target_pos: usize, is_up: bool, is_left: bool) {
+        let next_diagonal =
+            if is_up {
+                if is_left {
+                    row_up(target_pos, 1) - 1
+                }  else {
+                    row_up(target_pos, 1) + 1
+                }
+            } else {
+                if is_left {
+                    row_down(target_pos, 1) - 1
+                }  else {
+                    row_down(target_pos, 1) + 1
+                }
+            };
+        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_diagonal) {
+            self.try_to_overtake(source_pos, target_pos, next_diagonal as usize);
+        }
+    }
+
     fn scan_right_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
         let right_lower = row_down(source_pos, i) + i;
         let right_upper = row_up(source_pos, i) + i;
@@ -455,62 +479,65 @@ impl<'ttf> BoardState<'ttf> {
         }
     }
 
+    fn iterator_diagonal(&mut self, source_pos: usize, target_pos: usize, j: i32, is_up: bool, is_left: bool) -> bool {
+        let next_diagonal =
+            if is_up {
+              if is_left {
+                  row_up(source_pos, j) - j
+              }  else {
+                  row_up(source_pos, j) + j
+              }
+            } else {
+                if is_left {
+                    row_down(source_pos, j) - j
+                }  else {
+                    row_down(source_pos, j) + j
+                }
+            };
+
+        let is_target = next_diagonal as usize == target_pos;
+
+        if is_in_bounds(next_diagonal) {
+            if self.cell_mapping[target_pos].is_none() && is_target {
+                self.move_to_empty(source_pos, target_pos);
+                self.switch_turn();
+                return false;
+            } else if self.cell_mapping[next_diagonal as usize].is_some() {
+                if is_target {
+                    self.check_next(source_pos, target_pos, is_up, is_left);
+                }
+                return false;
+            }
+        } else {
+            return false;
+        }
+        true
+    }
+
     fn scan_diagonals(&mut self, source_pos: usize, target_pos: usize) {
         if !on_right_edge(source_pos) {
             for i in 1..=BOARD_LENGTH {
-                let j = i as i32;
-                let right_lower = row_down(source_pos, j) + j;
-
-                if is_in_bounds(right_lower) {
-                    if self.cell_mapping[target_pos].is_none() && right_lower as usize == target_pos {
-                        self.move_to_empty(source_pos, target_pos);
-                        self.switch_turn();
-                    } else if right_lower as usize == target_pos {
-                        self.check_next_down_right(source_pos, target_pos);
-                    }
+                if !self.iterator_diagonal(source_pos, target_pos, i as i32, false, false) {
+                    break;
                 }
             }
             for i in 1..=BOARD_LENGTH {
-                let j = i as i32;
-                let right_upper = row_up(source_pos, j) + j;
-
-                if is_in_bounds(right_upper) {
-                    if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
-                        self.move_to_empty(source_pos, target_pos);
-                        self.switch_turn();
-                    } else if right_upper as usize == target_pos {
-                        self.check_next_up_right(source_pos, target_pos);
-                    }
+                if !self.iterator_diagonal(source_pos, target_pos, i as i32, true, false) {
+                    break;
                 }
             }
         }
 
         if !on_left_edge(source_pos) {
             for i in 1..=BOARD_LENGTH {
-                let j = i as i32;
-                let left_lower = row_down(source_pos, j) - j;
-
-                if is_in_bounds(left_lower) {
-                    if self.cell_mapping[target_pos].is_none() && left_lower as usize == target_pos {
-                        self.move_to_empty(source_pos, target_pos);
-                        self.switch_turn();
-                    } else if left_lower as usize == target_pos {
-                        self.check_next_down_left(source_pos, target_pos);
-                    }
+                if !self.iterator_diagonal(source_pos, target_pos, i as i32, false, true) {
+                    break;
                 }
             }
 
             for i in 1..=BOARD_LENGTH {
-                let j = i as i32;
-                let left_upper = row_up(source_pos, j) - j;
-
-                if is_in_bounds(left_upper) {
-                    if self.cell_mapping[target_pos].is_none() && left_upper as usize == target_pos {
-                        self.move_to_empty(source_pos, target_pos);
-                        self.switch_turn();
-                    } else if left_upper as usize == target_pos {
-                        self.check_next_up_left(source_pos, target_pos);
-                    }
+                if !self.iterator_diagonal(source_pos, target_pos, i as i32, true, true) {
+                    break;
                 }
             }
         }
