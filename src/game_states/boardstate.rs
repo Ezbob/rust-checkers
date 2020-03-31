@@ -481,7 +481,7 @@ impl<'ttf> BoardState<'ttf> {
 }
 
 impl GameStateTrait for BoardState<'_> {
-    fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal {
+    fn update(&mut self, event: &sdl2::EventSubsystem) -> Result<RuntimeSignal, String> {
         if self.score.red <= 0 || self.score.green <= 0 {
             if self.score.red <= 0 {
                 event.push_custom_event(WinColorEvent::new_green()).unwrap();
@@ -489,7 +489,7 @@ impl GameStateTrait for BoardState<'_> {
                 event.push_custom_event(WinColorEvent::new_red()).unwrap();
             }
 
-            RuntimeSignal::GotoState(1)
+            Ok(RuntimeSignal::GotoState(1))
         } else {
             if self.source_index.is_some() && self.target_index.is_some() {
                 let (source_checker, source_i) = self.get_source_checker_ref().unwrap();
@@ -504,7 +504,7 @@ impl GameStateTrait for BoardState<'_> {
                 self.source_index = None;
                 self.target_index = None;
             }
-            RuntimeSignal::Continue
+            Ok(RuntimeSignal::Continue)
         }
     }
 
@@ -556,13 +556,13 @@ impl GameStateTrait for BoardState<'_> {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
+    fn handle_event(&mut self, event: &Event) -> Result<RuntimeSignal, String> {
         match event {
-            Event::Quit { .. } => return RuntimeSignal::Quit,
+            Event::Quit { .. } => return Ok(RuntimeSignal::Quit),
             Event::KeyDown {
                 keycode: Some(Keycode::Escape),
                 ..
-            } => RuntimeSignal::GotoState(2),
+            } => Ok(RuntimeSignal::GotoState(2)),
             Event::MouseButtonDown {
                 x,
                 y,
@@ -575,9 +575,9 @@ impl GameStateTrait for BoardState<'_> {
                     None => self.source_index = self.find_source_checker_rect(),
                     Some(_) => self.target_index = self.find_target_rect(),
                 };
-                RuntimeSignal::Continue
+                Ok(RuntimeSignal::Continue)
             }
-            _ => RuntimeSignal::Continue,
+            _ => Ok(RuntimeSignal::Continue)
         }
     }
 

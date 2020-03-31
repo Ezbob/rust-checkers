@@ -8,9 +8,9 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 
 pub trait GameStateTrait {
-    fn update(&mut self, event: &sdl2::EventSubsystem) -> RuntimeSignal;
+    fn update(&mut self, event: &sdl2::EventSubsystem) -> Result<RuntimeSignal, String>;
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String>;
-    fn handle_event(&mut self, event: &Event) -> RuntimeSignal;
+    fn handle_event(&mut self, event: &Event) -> Result<RuntimeSignal, String>;
     fn setup(&mut self, ass: &Assets) -> Result<(), String>;
     fn is_set_up(&self) -> bool;
 }

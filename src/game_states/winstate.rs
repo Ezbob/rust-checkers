@@ -33,8 +33,8 @@ impl<'ttf> WinState<'ttf> {
 }
 
 impl<'a> GameStateTrait for WinState<'a> {
-    fn update(&mut self, _event: &sdl2::EventSubsystem) -> RuntimeSignal {
-        RuntimeSignal::Continue
+    fn update(&mut self, _event: &sdl2::EventSubsystem) -> Result<RuntimeSignal, String> {
+        Ok(RuntimeSignal::Continue)
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
@@ -71,13 +71,13 @@ impl<'a> GameStateTrait for WinState<'a> {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
+    fn handle_event(&mut self, event: &Event) -> Result<RuntimeSignal, String> {
         match event {
             Event::Quit { .. }
             | Event::KeyDown {
                 keycode: Some(Keycode::Escape),
                 ..
-            } => return RuntimeSignal::Quit,
+            } => return Ok(RuntimeSignal::Quit),
             _ => {}
         };
 
@@ -90,7 +90,7 @@ impl<'a> GameStateTrait for WinState<'a> {
             }
         }
 
-        RuntimeSignal::Continue
+        Ok(RuntimeSignal::Continue)
     }
 
     fn setup(&mut self, ass: &Assets) -> Result<(), String> {

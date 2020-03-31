@@ -26,8 +26,8 @@ impl<'ttf> PauseState<'ttf> {
 }
 
 impl<'ttf> GameStateTrait for PauseState<'ttf> {
-    fn update(&mut self, _event: &EventSubsystem) -> RuntimeSignal {
-        RuntimeSignal::Continue
+    fn update(&mut self, _event: &EventSubsystem) -> Result<RuntimeSignal, String> {
+        Ok(RuntimeSignal::Continue)
     }
 
     fn render(&self, canvas: &mut Canvas<Window>) -> Result<(), String> {
@@ -53,14 +53,14 @@ impl<'ttf> GameStateTrait for PauseState<'ttf> {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: &Event) -> RuntimeSignal {
+    fn handle_event(&mut self, event: &Event) -> Result<RuntimeSignal, String> {
         match event {
-            Event::Quit { .. } => RuntimeSignal::Quit,
+            Event::Quit { .. } => Ok(RuntimeSignal::Quit),
             Event::KeyDown {
                 keycode: Some(Keycode::Escape),
                 ..
-            } => RuntimeSignal::GotoState(0),
-            _ => RuntimeSignal::Continue,
+            } => Ok(RuntimeSignal::GotoState(0)),
+            _ => Ok(RuntimeSignal::Continue)
         }
     }
 

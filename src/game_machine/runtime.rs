@@ -47,7 +47,7 @@ impl<'state> Runtime<'state> {
     fn handle_update(&mut self, clock: &mut Clock) -> Result<RuntimeSignal, String> {
         let event_system = self.event_system;
         while clock.should_update() {
-            match self.current_state_mut()?.update(event_system) {
+            match self.current_state_mut()?.update(event_system)? {
                 RuntimeSignal::GotoState(i) => return Ok(RuntimeSignal::GotoState(i)),
                 RuntimeSignal::Quit => return Ok(RuntimeSignal::Quit),
                 _ => {}
@@ -59,7 +59,7 @@ impl<'state> Runtime<'state> {
 
     fn handle_events(&mut self, event_pump: &mut EventPump) -> Result<RuntimeSignal, String> {
         for event in event_pump.poll_iter() {
-            match self.current_state_mut()?.handle_event(&event) {
+            match self.current_state_mut()?.handle_event(&event)? {
                 RuntimeSignal::Quit => {
                     return Ok(RuntimeSignal::Quit);
                 }
