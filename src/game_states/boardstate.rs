@@ -376,124 +376,60 @@ impl<'ttf> BoardState<'ttf> {
         }
     }
 
-    fn check_next_down_right(&mut self, source_pos: usize, target_pos: usize) {
-        let next_lower = row_down(target_pos, 1) + 1;
-        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_lower) {
-            self.try_to_overtake(source_pos, target_pos, next_lower as usize);
-        }
-    }
-
-    fn check_next_up_right(&mut self, source_pos: usize, target_pos: usize) {
-        let next_upper = row_up(target_pos, 1) + 1;
-        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_upper) {
-            self.try_to_overtake(source_pos, target_pos, next_upper as usize);
-        }
-    }
-
-    fn check_next_down_left(&mut self, source_pos: usize, target_pos: usize) {
-        let next_lower = row_down(target_pos, 1) - 1;
-        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_lower) {
-            self.try_to_overtake(source_pos, target_pos, next_lower as usize);
-        }
-    }
-
-    fn check_next_up_left(&mut self, source_pos: usize, target_pos: usize) {
-        let next_upper = row_up(target_pos, 1) - 1;
-        if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_upper) {
-            self.try_to_overtake(source_pos, target_pos, next_upper as usize);
-        }
-    }
-
     fn check_next(&mut self, source_pos: usize, target_pos: usize, is_up: bool, is_left: bool) {
-        let next_diagonal =
-            if is_up {
-                if is_left {
-                    row_up(target_pos, 1) - 1
-                }  else {
-                    row_up(target_pos, 1) + 1
-                }
+        let next_diagonal = if is_up {
+            if is_left {
+                row_up(target_pos, 1) - 1
             } else {
-                if is_left {
-                    row_down(target_pos, 1) - 1
-                }  else {
-                    row_down(target_pos, 1) + 1
-                }
-            };
+                row_up(target_pos, 1) + 1
+            }
+        } else {
+            if is_left {
+                row_down(target_pos, 1) - 1
+            } else {
+                row_down(target_pos, 1) + 1
+            }
+        };
         if !(on_right_edge(target_pos) || on_left_edge(target_pos)) && is_in_bounds(next_diagonal) {
             self.try_to_overtake(source_pos, target_pos, next_diagonal as usize);
-        }
-    }
-
-    fn scan_right_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let right_lower = row_down(source_pos, i) + i;
-        let right_upper = row_up(source_pos, i) + i;
-        if is_in_bounds(right_lower) {
-            if self.cell_mapping[target_pos].is_none() && right_lower as usize == target_pos {
-                self.move_to_empty(source_pos, target_pos);
-                self.switch_turn();
-            } else if right_lower as usize == target_pos {
-                self.check_next_down_right(source_pos, target_pos);
-            }
-        }
-        if is_in_bounds(right_upper) {
-            if self.cell_mapping[target_pos].is_none() && right_upper as usize == target_pos {
-                self.move_to_empty(source_pos, target_pos);
-                self.switch_turn();
-            } else if right_upper as usize == target_pos {
-                self.check_next_up_right(source_pos, target_pos);
-            }
-        }
-    }
-
-    fn scan_left_neighbourhood(&mut self, source_pos: usize, target_pos: usize, i: i32) {
-        let left_lower = row_down(source_pos, i) - i;
-        let left_upper = row_up(source_pos, i) - i;
-        // east-west boundary check
-        if is_in_bounds(left_lower) {
-            if self.cell_mapping[target_pos].is_none() && left_lower as usize == target_pos {
-                self.move_to_empty(source_pos, target_pos);
-                self.switch_turn();
-            } else if left_lower as usize == target_pos {
-                self.check_next_down_left(source_pos, target_pos);
-            }
-        }
-        if is_in_bounds(left_upper) {
-            if self.cell_mapping[target_pos].is_none() && left_upper as usize == target_pos {
-                self.move_to_empty(source_pos, target_pos);
-                self.switch_turn();
-            } else if left_upper as usize == target_pos {
-                self.check_next_up_left(source_pos, target_pos);
-            }
         }
     }
 
     fn scan_neighbourhood(&mut self, source_pos: usize, target_pos: usize) {
         if !on_right_edge(source_pos) {
             // east-west boundary check
-            self.scan_right_neighbourhood(source_pos, target_pos, 1);
+            self.iterator_diagonal(source_pos, target_pos, 1, false, false);
+            self.iterator_diagonal(source_pos, target_pos, 1, true, false);
         }
 
         if !on_left_edge(source_pos) {
             // east-west boundary check
-            self.scan_left_neighbourhood(source_pos, target_pos, 1);
+            self.iterator_diagonal(source_pos, target_pos, 1, false, true);
+            self.iterator_diagonal(source_pos, target_pos, 1, true, true);
         }
     }
 
-    fn iterator_diagonal(&mut self, source_pos: usize, target_pos: usize, j: i32, is_up: bool, is_left: bool) -> bool {
-        let next_diagonal =
-            if is_up {
-              if is_left {
-                  row_up(source_pos, j) - j
-              }  else {
-                  row_up(source_pos, j) + j
-              }
+    fn iterator_diagonal(
+        &mut self,
+        source_pos: usize,
+        target_pos: usize,
+        j: i32,
+        is_up: bool,
+        is_left: bool,
+    ) -> bool {
+        let next_diagonal = if is_up {
+            if is_left {
+                row_up(source_pos, j) - j
             } else {
-                if is_left {
-                    row_down(source_pos, j) - j
-                }  else {
-                    row_down(source_pos, j) + j
-                }
-            };
+                row_up(source_pos, j) + j
+            }
+        } else {
+            if is_left {
+                row_down(source_pos, j) - j
+            } else {
+                row_down(source_pos, j) + j
+            }
+        };
 
         let is_target = next_diagonal as usize == target_pos;
 
